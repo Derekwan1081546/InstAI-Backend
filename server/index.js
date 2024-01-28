@@ -6,13 +6,12 @@ const app = express()
 const api = require('./routes/api')
 const { HeadBucketCommand } = require('@aws-sdk/client-s3'); // 引入 AWS SDK S3 的客戶端和命令
 const {s3Client} = require('./awsconfig.js');
-const mysql = require("mysql2");
 require('dotenv').config(); //載入.env環境檔
-function getEnvVariable () {
-    const env_variable= process.env.YOUR_VARIABLE;// 取出環境變數
-    console.log(env_variable);
-}
-getEnvVariable()
+// function getEnvVariable () {
+//     const env_variable= process.env.YOUR_VARIABLE;// 取出環境變數
+//     console.log(env_variable);
+// }
+// getEnvVariable()
 
 // AWS 設定
 const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
