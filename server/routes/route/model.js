@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const router = express.Router();
-const { pool } = require("../../src/database.js");
+const { pool, rdsConnection } = require("../../src/database.js");
 
 router.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
@@ -38,25 +38,12 @@ router.post("/downloadmodel", (req, res) => {
     const username = req.query.username;
     const projectname = req.query.projectname;
     const modelname = req.query.modelname;
-    const performance_path =path.join(__dirname,
-        "../../uploads",
-        username,
-        projectname,
-        "Models"
-    );
     const versionnum =1;
     console.log(username, projectname);
-    const modelpath = path.join(__dirname,
-        "../../uploads",
-        username,
-        projectname,
-        "Models"
-      );
-    const fileNames = 'requirements.json';
-    const finalpath = path.join(modelpath,fileNames);
+    const modelpath = `uploads/${username}/${projectname}/requirements.json`; // 指定資料夾路徑
     const insert = 'INSERT INTO version (project_id, model_path, model_name, version_number, createtime) VALUES (?, ?, ?, ?, ?)';
     const check = 'select id from projects where project_name=?';
-    pool.query(check, [projectname], (err, data) => {
+    rdsConnection.query(check, [projectname], (err, data) => {
         if (err) {
             console.log(err);
         }
@@ -64,10 +51,10 @@ router.post("/downloadmodel", (req, res) => {
             const project_id=data[0].id;
             const currentDate = new Date();
             console.log(currentDate);
-            pool.query(insert, [project_id, finalpath, modelname, versionnum, currentDate], (err, results) => {
+            rdsConnection.query(insert, [project_id, modelpath, modelname, versionnum, currentDate], (err, results) => {
                 if (err) throw err;
                 console.log("insert version success.");
-                return res.status(200).send("專案新增成功!");
+                return res.status(200).send("模型下載成功!");
             });
         }
         else

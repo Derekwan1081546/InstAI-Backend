@@ -1,9 +1,12 @@
 const express = require("express");
-const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const router = express.Router();
-const { pool } = require("../../src/database.js");
+const { pool,rdsConnection } = require("../../src/database.js");
+const { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand   } = require('@aws-sdk/client-s3');
+const {s3Client} = require('../../awsconfig.js');
+const s3BucketName = process.env.AWS_BUCKET_NAME;
+
 
 router.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
@@ -12,38 +15,88 @@ router.use((req, res, next) => {
   console.log(req.method, req.url);
   next();
 });
+
+// async function checkS3FolderExists(folderPath, username, projectname) {
+//   try {
+//     const data = await s3Client.send(new ListObjectsV2Command({
+//       Bucket: s3BucketName,
+//       Prefix: folderPath,
+//       Delimiter: '/',
+//     }));
+
+//     if (data.Contents.length > 0 || data.CommonPrefixes.length > 0) {
+//       console.log("Folder exists");
+
+//       // 如果有文件，處理每個文件
+//       for (const file of data.Contents) {
+//         if(!file.Key.endsWith('/')){
+//           console.log('Processing file:', file.Key);
+//         } 
+//       }
+//       return true;
+//     } else {
+//       console.log("Folder does not exist");
+//       return false;
+//     }
+//   } catch (err) {
+//     console.error("Error checking S3 folder:", err);
+//     return false;
+//   }
+// }
 let arr = [];
-router.get("/getproject", (req, res) => {
+router.get("/getproject", async(req, res) => {
+  arr = [];
+  const username = req.query.username;
+  const folderPath = `uploads/${username}/`;
+
   try {
-    arr = [];
-    const username = req.query.username;
-    const user_path = path.join(__dirname, "../../uploads", username);
-    console.log(username, user_path);
-    if (fs.existsSync(user_path)) {
-      console.log("folder exists");
-      fs.readdirSync(user_path).forEach((folder) => {
-        console.log(folder);
-        arr.push(folder);
-      });
-      console.log(arr);
+    const data = await s3Client.send(new ListObjectsV2Command({
+      Bucket: s3BucketName,
+      Prefix: folderPath,
+      Delimiter: '/',
+    }));
+
+    if (data && (data.Contents || data.CommonPrefixes)) {
+      console.log("Folder exists");
+
+      if (data.Contents && data.Contents.length > 0) {
+        console.log("Processing files");
+
+        for (const file of data.Contents) {
+          console.log('Processing file:', file.Key);
+          arr.push(file.Key);
+        }
+      }
+
+      if (data.CommonPrefixes && data.CommonPrefixes.length > 0) {
+        console.log("Processing folders");
+
+        for (const folder of data.CommonPrefixes) {
+          console.log('Processing folder:', folder.Prefix);
+          const parts = folder.Prefix.split('/');
+          arr.push(parts[parts.length - 2]);
+          
+        }
+      }
     } else {
-      fs.mkdirSync(user_path);
+      console.log("Folder does not exist");
     }
+    console.log(arr);
     res.status(200).json(arr);
-  } catch (error) {
-    res.status(500).json(error.message);
+  } catch (err) {
+    console.error("Error checking S3 folder:", err);
+    res.status(500).json(err.message);
   }
+
 });
 
 router.post("/addproject", (req, res) => {
   const username = req.query.username;
   const projectname = req.body.projectName;
-  console.log(projectname);
-  const previousDir = path.join(__dirname, "..");
-  const dir = path.join(previousDir, "../uploads", username, projectname);
+  console.log(username, projectname);
   const query = 'INSERT INTO projects (user_id, project_name, step) VALUES (?, ?, ?)';
   const check = 'select * from projects where project_name=?';
-  pool.query(check, [projectname], (err, results) => {
+  rdsConnection.query(check, [projectname], (err, results) => {
     if (err) throw err;
     if(results.length>0)
     {
@@ -51,19 +104,53 @@ router.post("/addproject", (req, res) => {
     }
     else
     {
-      pool.query(query, [username, projectname, '0'], (err, results) => {
+      rdsConnection.query(query, [username, projectname, '0'], (err, results) => {
         if (err) throw err;
         console.log(results.insertId)
         console.log("project insert success.")
       });
     }
   });
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir);
-    res.send("專案新增成功!");
-  } else {
-    res.send("專案已存在!");
-  }
+
+  const folderName=`uploads/${username}/${projectname}/`;
+
+  //先檢查專案是否存在
+  // 設定參數
+  const params = {
+    Bucket: s3BucketName,
+    Prefix: folderName, // 資料夾路徑
+    Delimiter: '/',    // 以 / 作為分隔符
+    MaxKeys: 1,         // 最多返回一個結果
+  };
+
+  // 使用 ListObjectsV2Command 檢查資料夾是否存在
+  s3Client.send(new ListObjectsV2Command(params))
+    .then(data => {
+      // 檢查 data.Contents 是否已定義並且有 length 屬性
+      if (data.Contents && data.Contents.length > 0) {
+        console.log("資料夾存在");
+        res.send("專案已存在!");
+      } else {
+        console.log("資料夾還不存在");
+        const putObjectCommand = new PutObjectCommand({
+          Bucket: s3BucketName,
+          Key: folderName,
+          Body: '',
+          });
+      
+          s3Client.send(putObjectCommand)
+          .then((data) => {
+              console.log('username and projectname Folder created successfully:', data);
+              res.send("專案新增成功!");
+          })
+          .catch((err) => {
+              console.error('Error creating folder:', err);
+          });
+      }
+    })
+    .catch(error => {
+      console.error("Error checking folder in S3:", error);
+    });
 });
 
 router.post("/deleteproject", (req, res) => {
@@ -74,18 +161,59 @@ router.post("/deleteproject", (req, res) => {
   const previousDir = path.join(__dirname, "..");
   const dir = path.join(previousDir, "../uploads", username, projectname);
   const sql = "delete from  projects where project_name = ?" ;
-  pool.query(sql, [projectname], (err, data) => {
+  rdsConnection.query(sql, [projectname], (err, data) => {
     if (err) console.log("delete error.");
     else console.log("delete success.");
   });
-  try {
-    // Use recursive option to remove the directory and its contents
-    fs.rmdirSync(dir, { recursive: true });
-    res.send("專案已刪除!"); // Project has been deleted
-  } catch (err) {
-    console.error("Error deleting directory:", err);
-    res.status(500).send("刪除專案時發生錯誤"); // Error occurred while deleting
-  }
+
+  const delsql = "delete from  photos where project_id = ?" ;
+  rdsConnection.query(delsql, [projectname], (err, data) => {
+    if (err) console.log("delete image error.");
+    else console.log("delete image success.");
+  });
+  const folderName=`uploads/${username}/${projectname}/`;
+
+  // 使用 ListObjectsV2Command 列舉資料夾下的所有物件
+  const listParams = {
+    Bucket: s3BucketName,
+    Prefix: folderName, // 資料夾路徑
+  };
+
+  s3Client.send(new ListObjectsV2Command(listParams))
+    .then(data => {
+      // 取得資料夾下的所有物件的 Key
+      const keysToDelete = data.Contents.map(object => ({ Key: object.Key }));
+
+      // 設定 DeleteObjectCommand 參數
+      const deleteParams = {
+        Bucket: s3BucketName,
+        Delete: {
+          Objects: keysToDelete,
+          Quiet: false,
+        },
+      };
+
+      // 使用 DeleteObjectCommand 刪除資料夾下的所有物件
+      return s3Client.send(new DeleteObjectsCommand (deleteParams));
+    })
+    .then(data => {
+      console.log("資料夾刪除成功:", data);
+      res.send("專案已刪除!"); 
+    })
+    .catch(error => {
+      console.error("Error deleting folder in S3:", error);
+      res.status(500).send("刪除專案時發生錯誤"); 
+    });
+
+
+  // try {
+  //   // Use recursive option to remove the directory and its contents
+  //   fs.rmdirSync(dir, { recursive: true });
+  //   res.send("專案已刪除!"); // Project has been deleted
+  // } catch (err) {
+  //   console.error("Error deleting directory:", err);
+  //   res.status(500).send("刪除專案時發生錯誤"); // Error occurred while deleting
+  // }
 });
 
 router.post("/confirmstep", (req, res) => {
@@ -95,7 +223,7 @@ router.post("/confirmstep", (req, res) => {
   console.log(projectname);
 
   const updatestep = "update projects set step = ? where user_id = ? and project_name = ?";
-  pool.query(updatestep, [step,username, projectname], (err, results) => {
+  rdsConnection.query(updatestep, [step,username, projectname], (err, results) => {
     if (err) throw err;
     console.log("update projects step to " + step + "success!");
     res.status(200).send(step);
@@ -108,7 +236,7 @@ router.get("/getstep", (req, res) => {
   console.log(projectname);
 
   const getstep = "select step from  projects where user_id = ? and project_name = ?";
-  pool.query(getstep, [username, projectname], (err, results) => {
+  rdsConnection.query(getstep, [username, projectname], (err, results) => {
     if (err) {
       console.error("Error executing SQL query:", err);
       return res.status(500).json({ error: "Internal server error" });

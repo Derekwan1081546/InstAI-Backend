@@ -4,7 +4,8 @@ const { WebSocket } = require('ws')
 const bodyParser=require('body-parser')
 const app = express()
 const api = require('./routes/api')
-const AWS = require('@aws-sdk/client-s3');
+const { HeadBucketCommand } = require('@aws-sdk/client-s3'); // 引入 AWS SDK S3 的客戶端和命令
+const {s3Client} = require('./awsconfig.js');
 const mysql = require("mysql2");
 require('dotenv').config(); //載入.env環境檔
 function getEnvVariable () {
@@ -16,48 +17,51 @@ getEnvVariable()
 // AWS 設定
 const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
 const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-const rdsHost = process.env.AWS_RDS_HOST;
-const rdsUsername = process.env.AWS_RDS_USERNAME;
-const rdsPassword = process.env.AWS_RDS_PASSWORD;
-const rdsDBName = process.env.RDS_DATABASE;
 const s3BucketName = process.env.AWS_BUCKET_NAME;
-const rdsPORT = process.env.RDS_PORT
+const S3_BUCKET_REGION= process.env.AWS_REGION;
 
-// 連線到 RDS
-const rdsConnection = mysql.createConnection({
-    host: rdsHost,
-    user: rdsUsername,
-    password: rdsPassword,
-    database: rdsDBName,
-    //port: rdsPORT
-    // authPlugins: {
-    //     auth_gssapi_client: require('mysql2/lib/auth_plugins/mysql_clear_password.js')
-    // }
-});
-  
-rdsConnection.connect((err) => {
-    if (err) {
-      console.error(`無法連線到 RDS: ${err}`);
-      return;
-    }
-    console.log('成功連線到 RDS');
-});
-  
-  // 連線到 S3
-const s3 = new AWS.S3({
-    accessKeyId: awsAccessKeyId,
-    secretAccessKey: awsSecretAccessKey,
-});
-  
-s3.listObjects({ Bucket: s3BucketName }, (err, data) => {
-    if (err) {
-      console.error(`無法連線到 S3 或存儲桶不存在: ${err}`);
-      return;
-    }
-    console.log('成功連線到 S3');
-    console.log(`S3 存儲桶 ${s3BucketName} 中的物件數量: ${data.Contents.length}`);
-});
+// // 建立新的 S3 用戶端實例，設定區域和認證資訊
+// const s3Client = new S3Client({
+//     region: S3_BUCKET_REGION,
+//     credentials: {
+//       accessKeyId: awsAccessKeyId,
+//       secretAccessKey: awsSecretAccessKey,
+//     },
+// });
 
+
+// // 連線到 S3
+// const s3 = new AWS.S3({
+//     region: S3_BUCKET_REGION,
+//     credentials: {
+//       accessKeyId: awsAccessKeyId,
+//       secretAccessKey: awsSecretAccessKey,
+//     },
+// });
+
+
+
+// List objects in the S3 bucket
+// s3Client.listObjects({ Bucket: s3BucketName }, (err, data) => {
+//   if (err) {
+//     console.error('Error listing objects:', err);
+//   } else {
+//     console.log('成功連線到 S3');
+//     console.log('Objects in the bucket:', data.Contents.length);
+//   }
+// });
+
+
+// 使用 HeadBucketCommand 检查存储桶是否存在，表示连接成功
+const headBucketCommand = new HeadBucketCommand({ Bucket: s3BucketName });
+
+s3Client.send(headBucketCommand)
+  .then(() => {
+    console.log('Connected to S3 successfully!');
+  })
+  .catch((err) => {
+    console.error('Error connecting to S3:', err.message);
+  });
 
 //* server setup
 app.use(bodyParser.json({limit:'100mb'}));
