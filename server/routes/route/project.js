@@ -158,12 +158,24 @@ router.post("/deleteproject", (req, res) => {
   console.log(username);
   const projectname = req.body.projectName;
   console.log(projectname);
-  const previousDir = path.join(__dirname, "..");
-  const dir = path.join(previousDir, "../uploads", username, projectname);
-  const sql = "delete from  projects where project_name = ?" ;
-  rdsConnection.query(sql, [projectname], (err, data) => {
-    if (err) console.log("delete error.");
-    else console.log("delete success.");
+
+  rdsConnection.query('select id from projects where project_name=?', [projectname], (err, data) => {
+    if (err) {
+        console.log(err);
+    }
+    if(data.length>0)
+    {
+      const project_id=data[0].id;
+      const delreqsql = "delete from  requirements where project_id = ?" ;
+      rdsConnection.query(delreqsql, [project_id], (err, data) => {
+        if (err) console.log("delete requirements error.");
+        else console.log("delete requirements success.");
+      });
+    }
+    else
+    {
+      console.log("project not found.");
+    }
   });
 
   const delsql = "delete from  photos where project_id = ?" ;
@@ -171,6 +183,13 @@ router.post("/deleteproject", (req, res) => {
     if (err) console.log("delete image error.");
     else console.log("delete image success.");
   });
+
+  const sql = "delete from  projects where project_name = ?" ;
+  rdsConnection.query(sql, [projectname], (err, data) => {
+    if (err) console.log("delete error.");
+    else console.log("delete project success.");
+  });
+
   const folderName=`uploads/${username}/${projectname}/`;
 
   // 使用 ListObjectsV2Command 列舉資料夾下的所有物件
