@@ -94,8 +94,8 @@ router.post("/addproject", (req, res) => {
   const username = req.query.username;
   const projectname = req.body.projectName;
   console.log(username, projectname);
-  const query = 'INSERT INTO projects (user_id, project_name, step) VALUES (?, ?, ?)';
-  const check = 'select * from projects where project_name=?';
+  const query = 'INSERT INTO Projects (user_id, project_name, step) VALUES (?, ?, ?)';
+  const check = 'select * from Projects where project_name=?';
   rdsConnection.query(check, [projectname], (err, results) => {
     if (err) throw err;
     if(results.length>0)
@@ -159,35 +159,35 @@ router.post("/deleteproject", (req, res) => {
   const projectname = req.body.projectName;
   console.log(projectname);
 
-  rdsConnection.query('select id from projects where project_name=?', [projectname], (err, data) => {
+  rdsConnection.query('select id from Projects where project_name=?', [projectname], (err, data) => {
     if (err) {
         console.log(err);
     }
     if(data.length>0)
     {
       const project_id=data[0].id;
-      const delreqsql = "delete from  requirements where project_id = ?" ;
+      const delreqsql = "delete from  Requirements where project_id = ?" ;
       rdsConnection.query(delreqsql, [project_id], (err, data) => {
-        if (err) console.log("delete requirements error.");
-        else console.log("delete requirements success.");
+        if (err) console.log("delete Requirements error.");
+        else console.log("delete Requirements success.");
       });
     }
     else
     {
-      console.log("project not found.");
+      console.log("Project not found.");
     }
   });
 
-  const delsql = "delete from  photos where project_id = ?" ;
+  const delsql = "delete from  Images where project_id = ?" ;
   rdsConnection.query(delsql, [projectname], (err, data) => {
-    if (err) console.log("delete image error.");
+    if (err) console.log("delete Image error.");
     else console.log("delete image success.");
   });
 
-  const sql = "delete from  projects where project_name = ?" ;
+  const sql = "delete from  Projects where project_name = ?" ;
   rdsConnection.query(sql, [projectname], (err, data) => {
     if (err) console.log("delete error.");
-    else console.log("delete project success.");
+    else console.log("delete Project success.");
   });
 
   const folderName=`uploads/${username}/${projectname}/`;
@@ -241,10 +241,10 @@ router.post("/confirmstep", (req, res) => {
   const projectname = req.query.projectname;
   console.log(projectname);
 
-  const updatestep = "update projects set step = ? where user_id = ? and project_name = ?";
+  const updatestep = "update Projects set step = ? where user_id = ? and project_name = ?";
   rdsConnection.query(updatestep, [step,username, projectname], (err, results) => {
     if (err) throw err;
-    console.log("update projects step to " + step + "success!");
+    console.log("update Project step to " + step + "success!");
     res.status(200).send(step);
   });
 });
@@ -254,7 +254,7 @@ router.get("/getstep", (req, res) => {
   const projectname = req.query.projectname;
   console.log(projectname);
 
-  const getstep = "select step from  projects where user_id = ? and project_name = ?";
+  const getstep = "select step from  Projects where user_id = ? and project_name = ?";
   rdsConnection.query(getstep, [username, projectname], (err, results) => {
     if (err) {
       console.error("Error executing SQL query:", err);

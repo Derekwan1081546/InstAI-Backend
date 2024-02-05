@@ -24,35 +24,35 @@ rdsConnection.connect((err) => {
     return;
   }
   console.log('成功連線到 RDS');
-  const login = "CREATE TABLE login( id INT AUTO_INCREMENT PRIMARY KEY,  firstname VARCHAR(255),  lastname VARCHAR(255),  email VARCHAR(255),  password VARCHAR(255))";
+  const login = "CREATE TABLE Users( id INT AUTO_INCREMENT PRIMARY KEY,  firstname VARCHAR(255),  lastname VARCHAR(255),  email VARCHAR(255),  password VARCHAR(255),  bucketname VARCHAR(255),  createtime VARCHAR(255))";
   rdsConnection.query(login, null, (err, data) => {
       if (!err)
       console.log("login create success.");
   });
   const photos =
-  "CREATE TABLE photos" +
-  "(  id INT AUTO_INCREMENT PRIMARY KEY, image_name VARCHAR(255) NOT NULL, project_id VARCHAR(255) NOT NULL,image_path VARCHAR(255) NOT NULL, author VARCHAR(255) NOT NULL, LastUpdated VARCHAR(255) NOT NULL)";
+  "CREATE TABLE Images" +
+  "(  id INT AUTO_INCREMENT PRIMARY KEY, image_name VARCHAR(255) NOT NULL, project_id VARCHAR(255) NOT NULL,image_path VARCHAR(255) NOT NULL, uploader VARCHAR(255) NOT NULL,  img_info JSON,  label_path VARCHAR(255),  img_type VARCHAR(255), LastUpdated VARCHAR(255) NOT NULL)";
   rdsConnection.query(photos, null, (err, data) => {
       if (!err)
       console.log("photos create success.");
   });
   const projects =
       "CREATE TABLE " +
-      "projects" +
+      "Projects" +
       "(  id INT AUTO_INCREMENT PRIMARY KEY,  user_id VARCHAR(255) ,organization_id VARCHAR(255),project_name VARCHAR(255),  step VARCHAR(255))";
   rdsConnection.query(projects, null, (err, data) => {
       if (!err)
       console.log("projects create success.");
   });
   const requirements =
-      "CREATE TABLE requirements" +
-      "(  id INT AUTO_INCREMENT PRIMARY KEY,  project_id VARCHAR(255) NOT NULL, requirement_path VARCHAR(255) NOT NULL, author VARCHAR(255) NOT NULL, LastUpdated VARCHAR(255) NOT NULL, status VARCHAR(255) )";
+      "CREATE TABLE Requirements" +
+      "(  id INT AUTO_INCREMENT PRIMARY KEY,  project_id VARCHAR(255) NOT NULL, requirement_path VARCHAR(255) NOT NULL, uploader VARCHAR(255) NOT NULL, LastUpdated VARCHAR(255) NOT NULL, status VARCHAR(255) )";
   rdsConnection.query(requirements, null, (err, data) => {
       if (!err)
           console.log("requirements create success.");
   });
   const version =
-      "CREATE TABLE version" +
+      "CREATE TABLE Models" +
       "(  id INT AUTO_INCREMENT PRIMARY KEY,  project_id VARCHAR(255) NOT NULL, model_path VARCHAR(255) , model_name VARCHAR(255) , performance_path VARCHAR(255) , version_number VARCHAR(255), createtime VARCHAR(255) )";
   rdsConnection.query(version, null, (err, data) => {
       if (!err)

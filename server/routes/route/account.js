@@ -17,25 +17,44 @@ router.use((req, res, next) => {
 //* signup
 router.post('/signup', (req, res) => {
     console.log(req.body)
-    const sql = "INSERT INTO login (`firstname`,`lastname`,`email`,`password`) VALUES (?)";
+    console.log(req.body)
+    const selectsql = "SELECT * FROM Users WHERE `email`=(?) AND `password`=(?)";
+    const sql = "INSERT INTO Users (`firstname`,`lastname`,`email`,`password`,`createtime`) VALUES (?)";
+    const currentDate = new Date();
     const values = [
         req.body.fname,
         req.body.lname,
         req.body.email,
-        req.body.password
+        req.body.password,
+        currentDate
     ]
-      
-    rdsConnection.query(sql, [values], (err, data) => {
+
+    rdsConnection.query(selectsql, [req.body.email, req.body.password], (err, data) => {
         if (err) {
-            return res.json("error");
+            return res.json("Error");
         }
-        return res.json("register success!")
+        if (data.length > 0) {
+            return res.json("register failed!此Email已使用過!");
+        }
+        else{
+            
+            rdsConnection.query(sql, [values], (err, data) => {
+                if (err) {
+                    return res.json("error");
+                }
+                const insertedId = data.insertId;
+                console.log(`Inserted userID: ${insertedId}`);
+                return res.json("register success!" + insertedId);
+            })
+        }
     })
+      
+    
 })
 
 //* login
 router.post('/login', (req, res) => {
-    const sql = "SELECT * FROM login WHERE `email`=(?) AND `password`=(?)";
+    const sql = "SELECT * FROM Users WHERE `email`=(?) AND `password`=(?)";
     console.log(req.body)
     const folderName='uploads/';
 

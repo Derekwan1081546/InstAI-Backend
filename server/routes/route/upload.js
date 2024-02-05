@@ -63,11 +63,11 @@ async function uploadImageToS3(bucketName, filepath, file) {
 
 async function uploadImageFromS3( key, username, projectname) {
   try {
-    const query = 'INSERT INTO photos (image_name, project_id, image_path, author, LastUpdated) VALUES (?, ?, ?, ?, ?)';
+    const query = 'INSERT INTO Images (image_name, project_id, image_path, uploader, LastUpdated) VALUES (?, ?, ?, ?, ?)';
     // 將圖片資料插入到 RDS 資料庫
     const currentDate = new Date();
     const fileName = path.basename(key);
-    rdsConnection.query('select * from photos where image_name=? and project_id=?', [fileName,projectname], (err, data) => {
+    rdsConnection.query('select * from Images where image_name=? and project_id=?', [fileName,projectname], (err, data) => {
       if (err) {
           console.log(err)
       }
@@ -187,7 +187,7 @@ router.post("/deleteimg", async(req, res) => {
   const imageName = req.body.filename;
   console.log(username, projectname, imageName);
   
-  const delsql = "delete from  photos where image_path = ?" ;
+  const delsql = "delete from  Images where image_path = ?" ;
   rdsConnection.query(delsql, [imageName], (err, data) => {
     if (err) console.log("delete image error.");
     else console.log("delete image success.");
@@ -281,9 +281,9 @@ router.post("/requirement", (req, res) => {
 
 
 
-  const insert = 'INSERT INTO requirements (project_id, requirement_path, author, LastUpdated) VALUES (?, ?, ?, ?)';
+  const insert = 'INSERT INTO Requirements (project_id, requirement_path, uploader, LastUpdated) VALUES (?, ?, ?, ?)';
   
-  rdsConnection.query('select id from projects where project_name=?', [projectname], (err, data) => {
+  rdsConnection.query('select id from Projects where project_name=?', [projectname], (err, data) => {
     if (err) {
         console.log(err);
     }
@@ -295,14 +295,14 @@ router.post("/requirement", (req, res) => {
       
       console.log(requirement_path);
       //console.log(finalpath);
-      const updatesql = "update requirements set LastUpdated = ? where project_id = ?" ;
-      rdsConnection.query('select * from requirements where project_id=?', [project_id], (err, results) => {
+      const updatesql = "update Requirements set LastUpdated = ? where project_id = ?" ;
+      rdsConnection.query('select * from Requirements where project_id=?', [project_id], (err, results) => {
         if (err) throw err;
         if(results.length>0)
         {
           rdsConnection.query(updatesql, [currentDate, project_id], (err, results) => {
             if (err) throw err;
-            console.log("update requirements success.");
+            console.log("update Requirements success.");
           });
         }
         else
@@ -310,7 +310,7 @@ router.post("/requirement", (req, res) => {
           rdsConnection.query(insert, [project_id, s3path, username, currentDate], (err, results) => {
             if (err) throw err;
             console.log(results.insertId);
-            console.log("insert requirements success.");
+            console.log("insert Requirements success.");
           });
         }
       });    

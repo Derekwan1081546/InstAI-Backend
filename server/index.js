@@ -1,8 +1,11 @@
 const express = require('express')
+const cors = require('cors');
 const path = require('path')
 const { WebSocket } = require('ws')
 const bodyParser=require('body-parser')
 const app = express()
+// 👇️ configure CORS
+app.use(cors());
 const api = require('./routes/api')
 const { HeadBucketCommand } = require('@aws-sdk/client-s3'); // 引入 AWS SDK S3 的客戶端和命令
 const {s3Client} = require('./awsconfig.js');
@@ -69,10 +72,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api', api.router)
 
 
-
 //* open server
 const port = process.env.PORT || 8080
-const server = app.listen(port, () => { console.log('working to open') })
+const server = app.listen(port, () => { console.log(`CORS-enabled web server listening on port ${port}`);console.log('working to open') })
 
 //* websocket
 const wss = new WebSocket.Server({ server })
