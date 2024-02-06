@@ -8,29 +8,18 @@ const { rdsConnection } = require("../../src/database.js");
 const { PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand  } = require('@aws-sdk/client-s3'); // 引入 AWS SDK S3 的客戶端和命令
 const {s3Client, storage} = require('../../awsconfig.js');
 require('dotenv').config(); //載入.env環境檔
+const INSTANCE_IP = process.env.INSTANCE_IP;
+const s3BucketName = process.env.AWS_BUCKET_NAME;
+const S3_BUCKET_REGION= process.env.AWS_REGION;
+const bucketName = s3BucketName; // 替換為實際的 S3 存儲桶名稱
+
 router.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
+  res.setHeader("Access-Control-Allow-Origin", `http://${INSTANCE_IP}:3000`);
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   console.log(req.method, req.url);
   next();
 });
-
-const s3BucketName = process.env.AWS_BUCKET_NAME;
-const S3_BUCKET_REGION= process.env.AWS_REGION;
-
-const bucketName = s3BucketName; // 替換為實際的 S3 存儲桶名稱
-//const key = awsAccessKeyId; // 上傳到 S3 的路徑和檔名
-
-// const s3 = new S3Client({
-//   region: S3_BUCKET_REGION,
-//   credentials: {
-//     accessKeyId: awsAccessKeyId,
-//     secretAccessKey: awsSecretAccessKey,
-//   },
-// });
-
-
 
 // 上傳圖片函式
 async function uploadImageToS3(bucketName, filepath, file) {

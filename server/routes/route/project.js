@@ -6,10 +6,10 @@ const { pool,rdsConnection } = require("../../src/database.js");
 const { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand   } = require('@aws-sdk/client-s3');
 const {s3Client} = require('../../awsconfig.js');
 const s3BucketName = process.env.AWS_BUCKET_NAME;
-
+const INSTANCE_IP = process.env.INSTANCE_IP;
 
 router.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
+  res.setHeader("Access-Control-Allow-Origin", `http://${INSTANCE_IP}:3000`);
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   console.log(req.method, req.url);

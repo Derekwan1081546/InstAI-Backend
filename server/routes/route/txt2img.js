@@ -3,9 +3,10 @@ const axios = require('axios')
 const fs = require('fs');
 const { error } = require('console');
 const router = express.Router()
+const INSTANCE_IP = process.env.INSTANCE_IP;
 //* middleware
 router.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin', `http://${INSTANCE_IP}:3000`);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     console.log(req.method, req.url)
