@@ -1,9 +1,11 @@
 const express = require('express')
+const session = require('express-session');
 const cors = require('cors');
 const path = require('path')
 const { WebSocket } = require('ws')
 const bodyParser=require('body-parser')
 const app = express()
+
 // 👇️ configure CORS
 app.use(cors());
 const api = require('./routes/api')
@@ -15,44 +17,14 @@ require('dotenv').config(); //載入.env環境檔
 //     console.log(env_variable);
 // }
 // getEnvVariable()
-
-// AWS 設定
-const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
-const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 const s3BucketName = process.env.AWS_BUCKET_NAME;
-const S3_BUCKET_REGION= process.env.AWS_REGION;
-
-// // 建立新的 S3 用戶端實例，設定區域和認證資訊
-// const s3Client = new S3Client({
-//     region: S3_BUCKET_REGION,
-//     credentials: {
-//       accessKeyId: awsAccessKeyId,
-//       secretAccessKey: awsSecretAccessKey,
-//     },
-// });
-
-
-// // 連線到 S3
-// const s3 = new AWS.S3({
-//     region: S3_BUCKET_REGION,
-//     credentials: {
-//       accessKeyId: awsAccessKeyId,
-//       secretAccessKey: awsSecretAccessKey,
-//     },
-// });
-
-
-
-// List objects in the S3 bucket
-// s3Client.listObjects({ Bucket: s3BucketName }, (err, data) => {
-//   if (err) {
-//     console.error('Error listing objects:', err);
-//   } else {
-//     console.log('成功連線到 S3');
-//     console.log('Objects in the bucket:', data.Contents.length);
-//   }
-// });
-
+const secretkey = process.env.SECRETKEY;
+// 👇️ 設置 session 中間件
+app.use(session({
+  secret: secretkey, // 建議將密鑰放到環境變數中
+  resave: false,
+  saveUninitialized: true
+}));
 
 // 使用 HeadBucketCommand 检查存储桶是否存在，表示连接成功
 const headBucketCommand = new HeadBucketCommand({ Bucket: s3BucketName });
