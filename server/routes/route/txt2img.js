@@ -18,7 +18,7 @@ router.use((req, res, next) => {
 
 //* send to img2img api (stable diffusion)
 //TODO edit request to requestData
-router.post('/process', ensuretoken, function (req, res) {
+router.post('/process', ensuretoken, async function (req, res) {
     console.log(req.token);
     jwt.verify(req.token, secretkey , async function(err,data){
         if(err){

@@ -114,9 +114,9 @@ async function checkS3FolderExists(folderPath, username, projectname) {
 
 //* upload image to SQL
 const uploads = multer({ storage: storage });
-router.post("/upload", ensuretoken, uploads.array("file"), function(req, res) {
+router.post("/upload", ensuretoken, uploads.array("file"), async function(req, res) {
   console.log(req.token);
-  jwt.verify(req.token, secretkey , function(err,data){
+  jwt.verify(req.token, secretkey , async function(err,data){
     if(err){
       res.sendStatus(403);
     } else {
@@ -139,7 +139,7 @@ router.post("/upload", ensuretoken, uploads.array("file"), function(req, res) {
 });
 
 //* download image from SQL
-router.get("/download", ensuretoken, function(req, res) {
+router.get("/download", ensuretoken, async function(req, res) {
   console.log(req.token);
   jwt.verify(req.token, secretkey , async function(err,data){
     if(err){
@@ -190,7 +190,7 @@ router.get("/download", ensuretoken, function(req, res) {
 });
 
 
-router.post("/deleteimg", ensuretoken, function(req, res) {
+router.post("/deleteimg", ensuretoken, async function(req, res) {
   console.log(req.token);
   jwt.verify(req.token, secretkey , async function(err,data){
     if(err){
@@ -255,9 +255,9 @@ router.get("/checkdata", (req, res) => {
   }
 });
 
-router.post("/requirement", ensuretoken, function(req, res) {
+router.post("/requirement", ensuretoken, async function(req, res) {
   console.log(req.token);
-  jwt.verify(req.token, secretkey , function(err,data){
+  jwt.verify(req.token, secretkey , async function(err,data){
     if(err){
       res.sendStatus(403);
     } else {
@@ -344,7 +344,7 @@ router.post("/requirement", ensuretoken, function(req, res) {
 });
 
 
-router.get("/getrequirement", ensuretoken, function(req, res) {
+router.get("/getrequirement", ensuretoken, async function(req, res) {
   console.log(req.token);
   jwt.verify(req.token, secretkey , async function(err,data){
     if(err){

@@ -46,7 +46,7 @@ router.use((req, res, next) => {
 //   }
 // }
 let arr = [];
-router.get("/getproject", ensuretoken, function(req, res) {
+router.get("/getproject", ensuretoken, async function(req, res) {
   console.log(req.token);
   jwt.verify(req.token, secretkey , async function(err,data){
     if(err){
@@ -100,9 +100,9 @@ router.get("/getproject", ensuretoken, function(req, res) {
 
 });
 
-router.post("/addproject", ensuretoken, function(req, res) {
+router.post("/addproject", ensuretoken, async function(req, res) {
   console.log(req.token);
-  jwt.verify(req.token, secretkey , function(err,data){
+  jwt.verify(req.token, secretkey , async function(err,data){
     if(err){
       res.sendStatus(403);
     }else{
@@ -175,9 +175,9 @@ router.post("/addproject", ensuretoken, function(req, res) {
 
 });
 
-router.post("/deleteproject", ensuretoken, function(req, res) {
+router.post("/deleteproject", ensuretoken, async function(req, res) {
   console.log(req.token);
-  jwt.verify(req.token, secretkey , function(err,data){
+  jwt.verify(req.token, secretkey , async  function(err,data){
     if(err){
       res.sendStatus(403);
     } else {
@@ -257,9 +257,9 @@ router.post("/deleteproject", ensuretoken, function(req, res) {
   
 });
 
-router.post("/confirmstep", (req, res) => {
+router.post("/confirmstep", ensuretoken, async function(req, res) {
   console.log(req.token);
-  jwt.verify(req.token, secretkey , function(err,data){
+  jwt.verify(req.token, secretkey , async function(err,data){
     if(err){
       res.sendStatus(403);
     } else {
@@ -281,9 +281,9 @@ router.post("/confirmstep", (req, res) => {
   
 });
 
-router.get("/getstep", (req, res) => {
+router.get("/getstep", ensuretoken, async function(req, res) {
   console.log(req.token);
-  jwt.verify(req.token, secretkey , function(err,data){
+  jwt.verify(req.token, secretkey , async function(err,data){
     if(err){
       res.sendStatus(403);
     } else {

@@ -17,7 +17,7 @@ router.use((req, res, next) => {
 })
 
 //* signup
-router.post('/signup', (req, res) => {
+router.post('/signup', async(req, res) => {
     console.log(req.body);
     const selectsql = "SELECT * FROM Users WHERE `email`=(?) AND `password`=(?)";
     const sql = "INSERT INTO Users (`firstname`,`lastname`,`email`,`password`,`createtime`) VALUES (?)";
@@ -54,7 +54,7 @@ router.post('/signup', (req, res) => {
 })
 
 //* login
-router.post('/login', (req, res) => {
+router.post('/login', async(req, res) => {
     const sql = "SELECT * FROM Users WHERE `email`=(?) AND `password`=(?)";
     console.log(req.body)
     const folderName='uploads/';
@@ -88,7 +88,7 @@ router.post('/login', (req, res) => {
             const token = jwt.sign({user}, secretkey, options);
             console.log(token);
             console.log(data[0].id);
-            return res.json({data:"Success"+ data[0].id,token: token});
+            return res.json({message:"Success"+ data[0].id,token: token});
             //return res.json("Success"+ data[0].id);
         }
         else {

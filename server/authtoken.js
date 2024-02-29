@@ -31,7 +31,9 @@ function ensuretoken(req, res, next) {
   const bearerheader = req.headers["authorization"];
   if(typeof bearerheader !== 'undefined'){
       console.log(bearerheader);
-      req.token = bearerheader;
+      const bearer = bearerheader.split(" ");
+      const bearertoken = bearer[1];
+      req.token = bearertoken;
       next();
   }
   else {

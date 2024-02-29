@@ -64,7 +64,7 @@ async function downloadFile() {
 }
 
 
-router.post("/downloadmodel", ensuretoken, function(req, res) {
+router.post("/downloadmodel", ensuretoken, async function(req, res) {
   console.log(req.token);
   jwt.verify(req.token, secretkey , async function(err,data){
     if(err){
