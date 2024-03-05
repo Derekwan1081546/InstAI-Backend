@@ -52,34 +52,72 @@ async function uploadImageToS3(bucketName, filepath, file) {
 }
 
 
-
-async function uploadImageFromS3( key, username, projectname) {
+async function uploadImageFromS3(key, username, projectname) {
   try {
     const query = 'INSERT INTO Images (image_name, project_id, image_path, uploader, LastUpdated) VALUES (?, ?, ?, ?, ?)';
-    // 將圖片資料插入到 RDS 資料庫
     const currentDate = new Date();
     const fileName = path.basename(key);
-    rdsConnection.query('select * from Images where image_name=? and project_id=?', [fileName,projectname], (err, data) => {
-      if (err) {
-          console.log(err)
-      }
-      if(data.length!=0)
-      {
-        console.log(data)
-      }
-      else
-      {
-      rdsConnection.query(query, [fileName, projectname, key, username, currentDate], (err, results) => {
-        if (err) throw err;
-        console.log(results.insertId)
+
+    const insertImagePromise = new Promise((resolve, reject) => {
+      rdsConnection.query('select * from Images where image_name=? and project_id=?', [fileName, projectname], (err, data) => {
+        if (err) {
+          console.log(err);
+          reject(err);
+          return;
+        }
+
+        if (data.length !== 0) {
+          console.log(data);
+          resolve(); // 如果圖片已存在，直接 resolve
+        } else {
+          rdsConnection.query(query, [fileName, projectname, key, username, currentDate], (err, results) => {
+            if (err) {
+              console.error('Error inserting image into database:', err);
+              reject(err);
+              return;
+            }
+            console.log('Image inserted successfully:', results.insertId);
+            resolve(); // 插入完成後 resolve
+          });
+        }
       });
-      }    
     });
-    console.log('image upload success!');
+
+    await insertImagePromise; // 等待 Promise 完成
+
+    console.log('Image upload success!');
   } catch (err) {
-    console.error('Error getting image from S3:', err);
+    console.error('Error uploading image:', err);
   }
 }
+
+// async function uploadImageFromS3( key, username, projectname) {
+//   try {
+//     const query = 'INSERT INTO Images (image_name, project_id, image_path, uploader, LastUpdated) VALUES (?, ?, ?, ?, ?)';
+//     // 將圖片資料插入到 RDS 資料庫
+//     const currentDate = new Date();
+//     const fileName = path.basename(key);
+//     rdsConnection.query('select * from Images where image_name=? and project_id=?', [fileName,projectname], (err, data) => {
+//       if (err) {
+//           console.log(err)
+//       }
+//       if(data.length!=0)
+//       {
+//         console.log(data)
+//       }
+//       else
+//       {
+//       rdsConnection.query(query, [fileName, projectname, key, username, currentDate], (err, results) => {
+//         if (err) throw err;
+//         console.log(results.insertId)
+//       });
+//       }    
+//     });
+//     console.log('image upload success!');
+//   } catch (err) {
+//     console.error('Error getting image from S3:', err);
+//   }
+// }
 
 async function checkS3FolderExists(folderPath, username, projectname) {
   try {
@@ -91,9 +129,10 @@ async function checkS3FolderExists(folderPath, username, projectname) {
 
     if (data.Contents.length > 0 || data.CommonPrefixes.length > 0) {
       console.log("Folder exists");
-
+      
       // 如果有文件，處理每個文件
       for (const file of data.Contents) {
+        console.log(file.Key);
         if(!file.Key.endsWith('/')){
           console.log('Processing file:', file.Key);
 
@@ -123,11 +162,11 @@ router.post("/upload", ensuretoken, uploads.array("file"), async function(req, r
       // //! prepare
       console.log(req.body);
       const username = req.query.username;
-      const filename =  req.files[0].originalname;
+      //const filename =  req.files[0].originalname;
       const projectname = req.query.projectname;
       const currentDate = new Date();
       console.log(currentDate);
-      console.log(username, filename, projectname);
+      console.log(username, projectname);
       //! insert image(buffer)
       const folderPath = `uploads/${username}/${projectname}/`; // 指定資料夾路徑
       if(checkS3FolderExists(folderPath,username,projectname)){
