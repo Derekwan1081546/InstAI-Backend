@@ -46,6 +46,7 @@ router.use((req, res, next) => {
 //   }
 // }
 let arr = [];
+let desc = [];
 router.get("/getproject", ensuretoken, async function(req, res) {
   console.log(req.token);
   jwt.verify(req.token, secretkey , async function(err,data){
@@ -53,10 +54,11 @@ router.get("/getproject", ensuretoken, async function(req, res) {
       res.sendStatus(403);
     }else{
       arr = [];
+      desc = [];
       console.log(req.body);
       const username = req.query.username;
       const folderPath = `uploads/${username}/`;
-
+      
       try {
         const data = await s3Client.send(new ListObjectsV2Command({
           Bucket: s3BucketName,
@@ -83,14 +85,42 @@ router.get("/getproject", ensuretoken, async function(req, res) {
               console.log('Processing folder:', folder.Prefix);
               const parts = folder.Prefix.split('/');
               arr.push(parts[parts.length - 2]);
-              
+              console.log(arr);
+              // 使用 await 等待查詢的完成
+              try {
+                const results = await new Promise((resolve, reject) => {
+                  const check = 'select project_description from Projects where project_name=? and user_id=?';
+                  rdsConnection.query(check, [parts[parts.length - 2], username], (err, results) => {
+                    if (err) {
+                      console.error("Error executing SQL query:", err);
+                      reject(err);
+                    } else {
+                      resolve(results);
+                    }
+                  });
+                });
+
+                if (results.length > 0) {
+                  const project_description = results[0].project_description;
+                  console.log("description:", project_description);
+                  desc.push(project_description);
+                } else {
+                  console.log("Folder does not exist");
+                }
+              } catch (err) {
+                console.error("Error executing SQL query:", err);
+                throw err;
+              }
             }
           }
         } else {
           console.log("Folder does not exist");
         }
-        console.log(arr);
-        res.status(200).json(arr);
+        // console.log(arr);
+        // res.status(200).json(arr);
+        //console.log(desc);
+        console.log({arr,desc});
+        return res.status(200).json({projectname: arr,desc});
       } catch (err) {
         console.error("Error checking S3 folder:", err);
         res.status(500).json(err.message);
@@ -109,8 +139,9 @@ router.post("/addproject", ensuretoken, async function(req, res) {
       console.log(req.body);
       const username = req.query.username;
       const projectname = req.body.projectName;
-      console.log(username, projectname);
-      const query = 'INSERT INTO Projects (user_id, project_name, step) VALUES (?, ?, ?)';
+      const projectdesc = req.body.projectDescription;
+      console.log(username, projectname,  projectdesc);
+      const query = 'INSERT INTO Projects (user_id, project_name, project_description, step) VALUES (?, ?, ?, ?)';
       const check = 'select * from Projects where project_name=?';
       rdsConnection.query(check, [projectname], (err, results) => {
         if (err) throw err;
@@ -120,7 +151,7 @@ router.post("/addproject", ensuretoken, async function(req, res) {
         }
         else
         {
-          rdsConnection.query(query, [username, projectname, '0'], (err, results) => {
+          rdsConnection.query(query, [username, projectname, projectdesc, '0'], (err, results) => {
             if (err) throw err;
             console.log(results.insertId)
             console.log("project insert success.")
