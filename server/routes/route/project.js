@@ -148,6 +148,7 @@ router.post("/addproject", ensuretoken, async function(req, res) {
         if(results.length>0)
         {
           console.log("專案已存在");
+          return res.status(200).json("專案已存在");
         }
         else
         {
@@ -156,53 +157,51 @@ router.post("/addproject", ensuretoken, async function(req, res) {
             console.log(results.insertId)
             console.log("project insert success.")
           });
+          const folderName=`uploads/${username}/${projectname}/`;
+
+          //先檢查專案是否存在
+          // 設定參數
+          const params = {
+            Bucket: s3BucketName,
+            Prefix: folderName, // 資料夾路徑
+            Delimiter: '/',    // 以 / 作為分隔符
+            MaxKeys: 1,         // 最多返回一個結果
+          };
+
+          // 使用 ListObjectsV2Command 檢查資料夾是否存在
+          s3Client.send(new ListObjectsV2Command(params))
+            .then(data => {
+              // 檢查 data.Contents 是否已定義並且有 length 屬性
+              if (data.Contents && data.Contents.length > 0) {
+                console.log("資料夾存在");
+                res.send("專案已存在!");
+              } else {
+                console.log("資料夾還不存在");
+                const putObjectCommand = new PutObjectCommand({
+                  Bucket: s3BucketName,
+                  Key: folderName,
+                  Body: '',
+                  });
+              
+                  s3Client.send(putObjectCommand)
+                  .then((data) => {
+                      console.log('username and projectname Folder created successfully:', data);
+                      res.send("專案新增成功!");
+                  })
+                  .catch((err) => {
+                      console.error('Error creating folder:', err);
+                  });
+              }
+            })
+            .catch(error => {
+              console.error("Error checking folder in S3:", error);
+            });
+        }
+      })
         }
       });
 
-      const folderName=`uploads/${username}/${projectname}/`;
-
-      //先檢查專案是否存在
-      // 設定參數
-      const params = {
-        Bucket: s3BucketName,
-        Prefix: folderName, // 資料夾路徑
-        Delimiter: '/',    // 以 / 作為分隔符
-        MaxKeys: 1,         // 最多返回一個結果
-      };
-
-      // 使用 ListObjectsV2Command 檢查資料夾是否存在
-      s3Client.send(new ListObjectsV2Command(params))
-        .then(data => {
-          // 檢查 data.Contents 是否已定義並且有 length 屬性
-          if (data.Contents && data.Contents.length > 0) {
-            console.log("資料夾存在");
-            res.send("專案已存在!");
-          } else {
-            console.log("資料夾還不存在");
-            const putObjectCommand = new PutObjectCommand({
-              Bucket: s3BucketName,
-              Key: folderName,
-              Body: '',
-              });
-          
-              s3Client.send(putObjectCommand)
-              .then((data) => {
-                  console.log('username and projectname Folder created successfully:', data);
-                  res.send("專案新增成功!");
-              })
-              .catch((err) => {
-                  console.error('Error creating folder:', err);
-              });
-          }
-        })
-        .catch(error => {
-          console.error("Error checking folder in S3:", error);
-        });
-          // res.json({
-          //   terxt:"test123"
-          // });
-    }
-  })
+      
 
 });
 
