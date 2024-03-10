@@ -130,16 +130,17 @@ async function checkS3FolderExists(folderPath, username, projectname) {
     if (data.Contents.length > 0 || data.CommonPrefixes.length > 0) {
       console.log("Folder exists");
       
-      // 如果有文件，處理每個文件
+      const promises = [];
+    
       for (const file of data.Contents) {
         console.log(file.Key);
         if(!file.Key.endsWith('/')){
           console.log('Processing file:', file.Key);
-
-          // 從 S3 讀取圖片並上傳到 RDS
-          await uploadImageFromS3( file.Key, username, projectname);
+    
+          promises.push(uploadImageFromS3(file.Key, username, projectname));
         } 
       }
+      await Promise.all(promises);
       return true;
     } else {
       console.log("Folder does not exist");
@@ -160,7 +161,8 @@ router.post("/upload", ensuretoken, uploads.array("file"), async function(req, r
       res.sendStatus(403);
     } else {
       // //! prepare
-      console.log(req.body);
+      //console.log(req.body);
+      //console.log(req.files);
       const username = req.query.username;
       //const filename =  req.files[0].originalname;
       const projectname = req.query.projectname;
