@@ -58,7 +58,7 @@ router.get("/getproject", ensuretoken, async function(req, res) {
       console.log(req.body);
       const username = req.query.username;
       const folderPath = `uploads/${username}/`;
-      
+      console.log('Decoded JWT payload:', data);
       try {
         const data = await s3Client.send(new ListObjectsV2Command({
           Bucket: s3BucketName,

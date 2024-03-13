@@ -82,10 +82,10 @@ router.post('/login', async(req, res) => {
             // req.session.user = data[0];
             // console.log(req.session.user);
             const options = {
-                expiresIn: '1h' 
+                expiresIn: '2h' 
               };
             const user = data[0].id;
-            const token = jwt.sign({user}, secretkey, options);
+            const token = jwt.sign({user:user,email:email,password:password}, secretkey, options);
             console.log(token);
             console.log(data[0].id);
             return res.json({message:"Success"+ data[0].id,token: token});

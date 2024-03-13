@@ -46,17 +46,17 @@ app.use('/api', api.router)
 
 //* open server
 const port = process.env.PORT || 8080
-const server = app.listen(port, () => { console.log(`CORS-enabled web server listening on port ${port}`);console.log('working to open') })
+const server = app.listen(port, () => { console.log(`CORS-enabled web server listening on port ${port}`);console.log('working to open'); })
 
 //* websocket
 const wss = new WebSocket.Server({ server })
 wss.on('connection', (ws) => {
     console.log('client connected')
-
+    ws.send("hello welcome to websocket server!")
     //! message from client
     ws.on('message', (message) => {
         console.log(message)
-
+        ws.send(data + " (from server)")
 
 
 
@@ -68,3 +68,18 @@ wss.on('connection', (ws) => {
         console.log('leave socket')
     })
 })
+
+// const client = new WebSocket('ws://localhost:8080');
+
+// client.on('open', function() {
+//     console.log('WebSocket 已建立');
+//     client.send('111');
+// });
+
+// client.on('message', function(message) {
+//     console.log('收到消息:', message);
+// });
+
+// client.on('close', function() {
+//     console.log('WebSocket 连接已关闭');
+// });
