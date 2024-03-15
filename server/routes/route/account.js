@@ -92,7 +92,7 @@ router.post('/login', async(req, res) => {
             //return res.json("Success"+ data[0].id);
         }
         else {
-            return res.json("Faile");
+            return res.json({message:"Failed"});
         }
     })
 })
