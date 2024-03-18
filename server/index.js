@@ -55,14 +55,18 @@ if (cluster.isMaster) {
     console.log(`worker ${worker.process.pid} died`);
   });
 } else {
-  //* open server
   const port = process.env.PORT || 8080;
-  const server = app.listen(port, () => {
+  // Workers can share any TCP connection
+  // In this case it is an HTTP server
+
+  const server = http.createServer(app).listen(port, () => {
     console.log(`Worker ${process.pid} started`);
     console.log(`CORS-enabled web server listening on port ${port}`);
   });
+
+  console.log(`Worker ${process.pid} started`);
+  //* open server
   
-  //* websocket
   const wss = new WebSocket.Server({ server });
   wss.on('connection', (ws) => {
     console.log('client connected');
