@@ -142,8 +142,8 @@ router.post("/addproject", ensuretoken, async function(req, res) {
       const projectdesc = req.body.projectDescription;
       console.log(username, projectname,  projectdesc);
       const query = 'INSERT INTO Projects (user_id, project_name, project_description, step) VALUES (?, ?, ?, ?)';
-      const check = 'select * from Projects where project_name=?';
-      rdsConnection.query(check, [projectname], (err, results) => {
+      const check = 'select * from Projects where project_name=? and user_id=?';
+      rdsConnection.query(check, [projectname, username], (err, results) => {
         if (err) throw err;
         if(results.length>0)
         {
