@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
+const axios = require('axios')
 const router = express.Router();
 const { pool, rdsConnection } = require("../../src/database.js");
 const { GetObjectCommand } = require('@aws-sdk/client-s3');
@@ -17,6 +18,33 @@ router.use((req, res, next) => {
   console.log(req.method, req.url);
   next();
 });
+
+router.get("/getsdmodel", ensuretoken , async(req, res) => {
+  console.log(req.token);
+    jwt.verify(req.token, secretkey , async function(err,data){
+        if(err){
+        res.sendStatus(403);
+        } else {
+            try {
+                //console.log(req.body);
+                axios.get('http://3.209.60.70:7860/sdapi/v1/sd-models', { timeout: 1000000 * 10 ^ 3 })//http://3.209.60.70:7860/sdapi/v1/txt2img
+                    .then(response => {
+                      const data = response.data; // 取得response的body資料
+                      console.log(data);
+                      res.status(200).json(data); // 回傳data 
+                    })
+                    .catch(error => {
+                      console.log(error)
+                      res.status(500).send("error")
+                    })
+            } catch (err) {
+                console.log(err)
+                res.status(500).send("error")
+            }
+        }
+    })
+});
+
 let arr = [];
 router.get("/getmodel", (req, res) => {
   try {

@@ -342,4 +342,59 @@ router.get("/getstep", ensuretoken, async function(req, res) {
   
 });
 
+router.post("/modifyimgcount", ensuretoken, async function(req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey , async function(err,data){
+    if(err){
+      res.sendStatus(403);
+    } else {
+      console.log(req.body);
+      const count = req.query.count;
+      const username = req.query.username;
+      const projectname = req.query.projectname;
+      console.log(projectname);
+
+      const updatecount = "update Projects set img_generation_remaining_count = ? where user_id = ? and project_name = ?";
+      rdsConnection.query(updatecount, [count,username, projectname], (err, results) => {
+        if (err) throw err;
+        console.log("update Project img_generation_remaining_count to " + count + "success!");
+        res.status(200).send(count);
+      });
+
+    }
+  })
+  
+});
+
+router.get("/getimgcount", ensuretoken, async function(req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey , async function(err,data){
+    if(err){
+      res.sendStatus(403);
+    } else {
+      console.log(req.body);
+      const username = req.query.username;
+      const projectname = req.query.projectname;
+      console.log(projectname);
+
+      const getcount = "select img_generation_remaining_count from  Projects where user_id = ? and project_name = ?";
+      rdsConnection.query(getcount, [username, projectname], (err, results) => {
+        if (err) {
+          console.error("Error executing SQL query:", err);
+          return res.status(500).json({ error: "Internal server error" });
+        }
+
+        if (results.length > 0) {
+          const count = results[0].img_generation_remaining_count;
+          console.log("img_generation_remaining_count:", count);
+          return res.status(200).send(count);
+        } else {
+          return res.status(404).json({ error: "Project not found" });
+        }
+      });
+    }
+  })
+  
+});
+
 module.exports = { router };

@@ -32,8 +32,10 @@ router.post('/signup', async(req, res) => {
 
     rdsConnection.query(selectsql, [req.body.email, req.body.password], (err, data) => {
         if (err) {
-            return res.json("Error");
+            console.error(err);
+            return res.status(500).json({ message: 'Internal server error' });
         }
+        
         if (data.length > 0) {
             return res.json("register failed!此Email已使用過!");
         }
@@ -73,26 +75,33 @@ router.post('/login', async(req, res) => {
         console.error('Error creating folder:', err);
     });
 
+    if (email === process.env.REACT_APP_EMAIL && password === process.env.REACT_APP_PASSWORD) {
+        // Generate a special JWT token for admin user
+        const options = {
+            expiresIn: '2h' 
+        };
+        const token = jwt.sign({user: 'admin'}, secretkey, options);
+        return res.json({message:"Admin Success", token: token});
+    }
+
     rdsConnection.query(sql, [req.body.email, req.body.password], (err, data) => {
         if (err) {
-            return res.json("Error");
+            console.error(err);
+            return res.status(500).json({ message: 'Internal server error' });
         }
+        
         if (data.length > 0) {
-            // 使用者驗證成功，生成 session
-            // req.session.user = data[0];
-            // console.log(req.session.user);
             const options = {
                 expiresIn: '2h' 
-              };
+            };
             const user = data[0].id;
             const token = jwt.sign({user:user,email:email,password:password}, secretkey, options);
             console.log(token);
             console.log(data[0].id);
             return res.json({message:"Success"+ data[0].id,token: token});
-            //return res.json("Success"+ data[0].id);
         }
         else {
-            return res.json({message:"Failed"});
+            return res.json("Faile");
         }
     })
 })
