@@ -140,8 +140,9 @@ router.post("/addproject", ensuretoken, async function(req, res) {
       const username = req.query.username;
       const projectname = req.body.projectName;
       const projectdesc = req.body.projectDescription;
-      console.log(username, projectname,  projectdesc);
-      const query = 'INSERT INTO Projects (user_id, project_name, project_description, step) VALUES (?, ?, ?, ?)';
+      const currentDate = new Date();
+      console.log(username, projectname,  projectdesc, currentDate);
+      const query = 'INSERT INTO Projects (user_id, project_name, project_description, step, img_generation_remaining_count, CreateTime) VALUES (?, ?, ?, ?, ?, ?)';
       const check = 'select * from Projects where project_name=? and user_id=?';
       rdsConnection.query(check, [projectname, username], (err, results) => {
         if (err) throw err;
@@ -152,7 +153,7 @@ router.post("/addproject", ensuretoken, async function(req, res) {
         }
         else
         {
-          rdsConnection.query(query, [username, projectname, projectdesc, '0'], (err, results) => {
+          rdsConnection.query(query, [username, projectname, projectdesc, '0', 4, currentDate], (err, results) => {
             if (err) throw err;
             console.log(results.insertId)
             console.log("project insert success.")
