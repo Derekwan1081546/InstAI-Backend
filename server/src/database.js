@@ -113,14 +113,16 @@ function createTables() {
     "CREATE TABLE IF NOT EXISTS Images( id INT AUTO_INCREMENT PRIMARY KEY, image_name VARCHAR(255) NOT NULL, project_id VARCHAR(255) NOT NULL,image_path VARCHAR(255) NOT NULL, uploader VARCHAR(255) NOT NULL,  img_info JSON,  label_path VARCHAR(255),  img_type VARCHAR(255), LastUpdated VARCHAR(255) NOT NULL)",
     "CREATE TABLE IF NOT EXISTS Projects( id INT AUTO_INCREMENT PRIMARY KEY,  user_id VARCHAR(255) ,organization_id VARCHAR(255),project_name VARCHAR(255), project_description VARCHAR(255),  step VARCHAR(255))",
     "CREATE TABLE IF NOT EXISTS Requirements( id INT AUTO_INCREMENT PRIMARY KEY,  project_id VARCHAR(255) NOT NULL, requirement_path VARCHAR(255) NOT NULL, uploader VARCHAR(255) NOT NULL, LastUpdated VARCHAR(255) NOT NULL, status VARCHAR(255) )",
-    "CREATE TABLE IF NOT EXISTS Models( id INT AUTO_INCREMENT PRIMARY KEY,  project_id VARCHAR(255) NOT NULL, model_path VARCHAR(255) , model_name VARCHAR(255) , performance_path VARCHAR(255) , version_number VARCHAR(255), createtime VARCHAR(255) )"
+    "CREATE TABLE IF NOT EXISTS Models( id INT AUTO_INCREMENT PRIMARY KEY,  project_id VARCHAR(255) NOT NULL, model_path VARCHAR(255) , model_name VARCHAR(255) , performance_path VARCHAR(255) , version_number VARCHAR(255), createtime VARCHAR(255) )",
+    "CREATE TABLE IF NOT EXISTS SDModels( id INT AUTO_INCREMENT PRIMARY KEY,  project_id VARCHAR(255) NOT NULL,  model_path VARCHAR(255),  model_name VARCHAR(255),  checkpoint VARCHAR(255),  description VARCHAR(255),  createtime VARCHAR(255),  LastUpdated VARCHAR(255) ) "
   ];
   const Tables = [
     "Users",
     "Images",
     "Projects",
     "Requirements",
-    "Models"
+    "Models",
+    "SDModels"
   ];
   getConnection((err, connection) => {
     if (err) {

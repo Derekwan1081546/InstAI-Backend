@@ -27,16 +27,52 @@ router.get("/getsdmodel", ensuretoken , async(req, res) => {
         } else {
             try {
                 //console.log(req.body);
-                axios.get('http://3.209.60.70:7860/sdapi/v1/sd-models', { timeout: 1000000 * 10 ^ 3 })//http://3.209.60.70:7860/sdapi/v1/txt2img
-                    .then(response => {
-                      const data = response.data; // 取得response的body資料
-                      console.log(data);
-                      res.status(200).json(data); // 回傳data 
-                    })
-                    .catch(error => {
-                      console.log(error)
-                      res.status(500).send("error")
-                    })
+                axios.get('http://3.209.60.70:7860/sdapi/v1/sd-models', { timeout: 1000000 * 10 ** 3 })
+                .then(response => {
+                  const data = response.data; // Get the response body data
+                  console.log(data);
+                  const currentDate = new Date();
+                  const checksql='select checkpoint from SDModels where checkpoint=?';
+                  const sql = 'INSERT INTO SDModels (model_path, model_name, checkpoint, createtime, LastUpdated) VALUES (?, ?, ?, ?, ?)';
+                  const selectsql = 'select checkpoint,model_name, description from SDModels';
+                  let allResults = []; // Array to store all results
+                  // Loop through each data item and insert it into the table
+                  data.forEach(item => {
+                    const { filename, model_name, title } = item;
+                    rdsConnection.query(checksql, [ title ], (err, results) => {
+                      if (err) throw err;
+                      if(results.length > 0){
+                        console.log(`Model ${title} already exist!`);
+                      }
+                      else
+                      {
+                          rdsConnection.query(sql, [filename, model_name, title, currentDate, currentDate], (err, results) => {
+                          if (err) {
+                            console.error(err);
+                          } else {
+                            console.log(`Model ${model_name} inserted successfully.`);
+                            console.log('Inserted ID:', results.insertId);
+                          }
+                        });
+                      }
+                    });
+                  });
+                  rdsConnection.query(selectsql, [], (err, results) => {
+                    if (err) {
+                      console.error(err);
+                      res.status(500).send("error");
+                    } else {
+                      console.log(results);
+                      allResults.push(results); // Push results to the array
+                      res.status(200).json(allResults); // Return data      
+                    }
+                  });
+                  
+                })
+                .catch(error => {
+                  console.error(error);
+                  res.status(500).send("error");
+                });
             } catch (err) {
                 console.log(err)
                 res.status(500).send("error")
@@ -44,6 +80,33 @@ router.get("/getsdmodel", ensuretoken , async(req, res) => {
         }
     })
 });
+//modifysdmodel
+router.post("/modifysdmodel", ensuretoken, async function(req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey , async function(err,data){
+    if(err){
+      res.sendStatus(403);
+    } else {
+      console.log(req.body);
+      const description = req.body.description;
+      const modelname = req.body.modelname;
+      const checkpoint = req.body.checkpoint;
+      console.log(description, modelname, checkpoint);
+      const updatesql = "update SDModels set description = ? , model_name = ? , LastUpdated = ?  where checkpoint = ? ";
+      const currentDate = new Date();
+      rdsConnection.query(updatesql, [description, modelname, currentDate, checkpoint], (err, results) => {
+        if (err) {
+          console.error(err);
+          res.status(500).send("error");
+        }
+        console.log("update description success!");
+        res.status(200).send("update description success!");
+      });
+
+    }
+  })
+});
+
 
 let arr = [];
 router.get("/getmodel", (req, res) => {

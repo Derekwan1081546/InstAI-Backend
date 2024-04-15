@@ -20,14 +20,15 @@ router.use((req, res, next) => {
 router.post('/signup', async(req, res) => {
     console.log(req.body);
     const selectsql = "SELECT * FROM Users WHERE `email`=(?) AND `password`=(?)";
-    const sql = "INSERT INTO Users (`firstname`,`lastname`,`email`,`password`,`createtime`) VALUES (?)";
+    const sql = "INSERT INTO Users (`firstname`,`lastname`,`email`,`password`,`createtime`,`role`) VALUES (?)";
     const currentDate = new Date();
     const values = [
         req.body.fname,
         req.body.lname,
         req.body.email,
         req.body.password,
-        currentDate
+        currentDate,
+        'normal_user'
     ]
 
     rdsConnection.query(selectsql, [req.body.email, req.body.password], (err, data) => {
@@ -47,7 +48,7 @@ router.post('/signup', async(req, res) => {
                 }
                 const insertedId = data.insertId;
                 console.log(`Inserted userID: ${insertedId}`);
-                return res.json("register success!" + insertedId);
+                return res.json("register success!");
             })
         }
     })
@@ -101,7 +102,7 @@ router.post('/login', async(req, res) => {
             return res.json({message:"Success"+ data[0].id,token: token});
         }
         else {
-            return res.json("Faile");
+            return res.json("Failed");
         }
     })
 })
