@@ -63,8 +63,12 @@ router.get("/getsdmodel", ensuretoken , async(req, res) => {
                       res.status(500).send("error");
                     } else {
                       console.log(results);
-                      allResults.push(results); // Push results to the array
-                      res.status(200).json(allResults); // Return data      
+                      results.forEach(result => {
+                        allResults.push(result); // Push each result to the array
+                      });
+                      res.status(200).json(allResults); // Return data
+                      // allResults.push(results); // Push results to the array
+                      // res.status(200).json(allResults); // Return data      
                     }
                   });
                   
