@@ -8,6 +8,8 @@ const jwt = require('jsonwebtoken');
 const s3BucketName = process.env.AWS_BUCKET_NAME;
 const INSTANCE_IP = process.env.INSTANCE_IP;
 const secretkey = process.env.SECRETKEY;
+const adminemail = process.env.REACT_APP_EMAIL;
+const adminpassword = process.env.REACT_APP_PASSWORD;
 router.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', `http://localhost:3000`);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
@@ -28,7 +30,7 @@ router.post('/signup', async(req, res) => {
         req.body.email,
         req.body.password,
         currentDate,
-        'normal_user'
+        req.body.role || 'normal_user'
     ]
 
     rdsConnection.query(selectsql, [req.body.email, req.body.password], (err, data) => {
@@ -119,15 +121,27 @@ router.get("/getuser", ensuretoken, async function(req, res) {
       allusers = [];
       console.log(req.body);
       console.log('Decoded JWT payload:', data);
-      const selectsql = "select id, firstname, lastname, role from Users";
-      rdsConnection.query(selectsql, [], (err, results) => {
+      const selectsql = "select id, firstname, lastname, email, password, role, createtime from Users where `email`!=(?) AND `password`!=(?) ";
+      rdsConnection.query(selectsql, [adminemail, adminpassword], (err, results) => {
         if (err) {
           console.error(err);
           res.status(500).send("error");
         }
         console.log(results);
         results.forEach(result => {
-        allusers.push(result); // Push each result to the array
+          const user = {
+            id: result.id,
+            firstname: result.firstname,
+            lastname: result.lastname,
+            email: result.email,
+            password: result.password,
+            role: result.role,
+            createtime: result.createtime,
+          };
+
+          // Push the new user object to the allusers array
+          allusers.push(user);
+          // allusers.push(result); // Push each result to the array
         });
         res.status(200).json(allusers); // Return data
       });
