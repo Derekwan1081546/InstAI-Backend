@@ -43,15 +43,29 @@ router.post('/signup', async(req, res) => {
             return res.json("register failed!此Email已使用過!");
         }
         else{
-            
-            rdsConnection.query(sql, [values], (err, data) => {
-                if (err) {
-                    return res.json("error");
-                }
-                const insertedId = data.insertId;
-                console.log(`Inserted userID: ${insertedId}`);
-                return res.json("register success!");
-            })
+          
+          rdsConnection.query(sql, [values], (err, data) => {
+              if (err) {
+                  return res.json("error");
+              }
+              const insertedId = data.insertId;
+              console.log(`Inserted userID: ${insertedId}`);
+              const folderName = `uploads/${insertedId}/`;
+              const putObjectCommand = new PutObjectCommand({
+              Bucket: s3BucketName,
+              Key: folderName,
+              Body: '',
+              });
+          
+              s3Client.send(putObjectCommand)
+              .then((data) => {
+                  console.log('user Folder created successfully:', data);
+              })
+              .catch((err) => {
+                  console.error('Error creating folder:', err);
+              });
+              return res.json("register success!");
+          })
         }
     })
       
@@ -88,20 +102,6 @@ router.post('/login', async(req, res) => {
             const token = jwt.sign({user:user,email:email,password:password,role:user_role}, secretkey, options);
             console.log(token);
             console.log(data[0].id);
-            const folderName = `uploads/${user}/`;
-            const putObjectCommand = new PutObjectCommand({
-            Bucket: s3BucketName,
-            Key: folderName,
-            Body: '',
-            });
-        
-            s3Client.send(putObjectCommand)
-            .then((data) => {
-                console.log('uploads Folder created successfully:', data);
-            })
-            .catch((err) => {
-                console.error('Error creating folder:', err);
-            });
             return res.json({message:"Success"+ data[0].id,token: token});
         }
         else {
