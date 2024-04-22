@@ -62,21 +62,7 @@ router.post('/signup', async(req, res) => {
 router.post('/login', async(req, res) => {
     const sql = "SELECT * FROM Users WHERE `email`=(?) AND `password`=(?)";
     console.log(req.body)
-    const folderName='uploads/';
     const { email, password } = req.body;
-    const putObjectCommand = new PutObjectCommand({
-    Bucket: s3BucketName,
-    Key: folderName,
-    Body: '',
-    });
-
-    s3Client.send(putObjectCommand)
-    .then((data) => {
-        console.log('uploads Folder created successfully:', data);
-    })
-    .catch((err) => {
-        console.error('Error creating folder:', err);
-    });
 
     if (email === process.env.REACT_APP_EMAIL && password === process.env.REACT_APP_PASSWORD) {
         // Generate a special JWT token for admin user
@@ -102,6 +88,20 @@ router.post('/login', async(req, res) => {
             const token = jwt.sign({user:user,email:email,password:password,role:user_role}, secretkey, options);
             console.log(token);
             console.log(data[0].id);
+            const folderName = `uploads/${user}/`;
+            const putObjectCommand = new PutObjectCommand({
+            Bucket: s3BucketName,
+            Key: folderName,
+            Body: '',
+            });
+        
+            s3Client.send(putObjectCommand)
+            .then((data) => {
+                console.log('uploads Folder created successfully:', data);
+            })
+            .catch((err) => {
+                console.error('Error creating folder:', err);
+            });
             return res.json({message:"Success"+ data[0].id,token: token});
         }
         else {

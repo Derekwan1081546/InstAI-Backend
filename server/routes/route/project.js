@@ -72,10 +72,10 @@ router.get("/getproject", ensuretoken, async function(req, res) {
           if (data.Contents && data.Contents.length > 0) {
             console.log("Processing files");
 
-            for (const file of data.Contents) {
-              console.log('Processing file:', file.Key);
-              arr.push(file.Key);
-            }
+            // for (const file of data.Contents) {
+            //   console.log('Processing file:', file.Key);
+            //   arr.push(file.Key);
+            // }
           }
 
           if (data.CommonPrefixes && data.CommonPrefixes.length > 0) {
