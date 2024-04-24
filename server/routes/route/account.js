@@ -21,7 +21,7 @@ router.use((req, res, next) => {
 //* signup
 router.post('/signup', async(req, res) => {
     console.log(req.body);
-    const selectsql = "SELECT * FROM Users WHERE `email`=(?) AND `password`=(?)";
+    const selectsql = "SELECT * FROM Users WHERE `email`=(?)";
     const sql = "INSERT INTO Users (`firstname`,`lastname`,`email`,`password`,`createtime`,`role`) VALUES (?)";
     const currentDate = new Date();
     const values = [
