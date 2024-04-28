@@ -401,26 +401,47 @@ router.get("/getimgcount", ensuretoken, async function(req, res) {
 });
 
 //list all project's info
-let allprojects = [];
+// let allprojects = [];
 router.get("/getallproject", ensuretoken, async function(req, res) {
   console.log(req.token);
-  jwt.verify(req.token, secretkey , async function(err,data){
-    if(err){
+  jwt.verify(req.token, secretkey, async function(err, data) {
+    if (err) {
       res.sendStatus(403);
     } else {
-      console.log(req.body);
-      const getsql = "select * from  Projects";
-      rdsConnection.query(getsql, [], (err, results) => {
+      const getsql = "select * from Projects";
+      rdsConnection.query(getsql, [], async (err, results) => {
         if (err) {
           console.error("Error executing SQL query:", err);
           return res.status(500).json({ error: "Internal server error" });
         }
-        allprojects = [];
+        let allprojects = [];
         if (results.length > 0) {
-          results.forEach(result => {
+          for (const result of results) {
+            const selectsql = "select email from Users where id = ?";
+            let user_email = '';
+            try {
+              const queryResult = await new Promise((resolve, reject) => {
+                rdsConnection.query(selectsql, [result.user_id], (err, results) => {
+                  if (err) {
+                    reject(err);
+                  } else {
+                    resolve(results);
+                  }
+                });
+              });
+              
+              if (queryResult.length > 0) {
+                user_email = queryResult[0].email;
+                // console.log('user email:', user_email);
+              }
+            } catch (err) {
+              console.error("Error querying user email:", err);
+            }
+            
             const project = {
               id: result.id,
-              userid: result.userid,
+              userid: result.user_id,
+              email: user_email,
               project_name: result.project_name,
               status: result.status,
               project_description: result.project_description,
@@ -429,15 +450,14 @@ router.get("/getallproject", ensuretoken, async function(req, res) {
               img_generation_remaining_count: result.img_generation_remaining_count
             };
             allprojects.push(project);
-          });
+          }
           return res.status(200).send(allprojects);
         } else {
-          return res.status(404).json({ error: "found no Project." });
+          return res.status(404).json({ error: "No projects found." });
         }
       });
     }
-  })
-  
+  });
 });
 
 module.exports = { router };
