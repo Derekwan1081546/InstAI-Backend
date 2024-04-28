@@ -140,9 +140,11 @@ router.post("/addproject", ensuretoken, async function(req, res) {
       const username = req.query.username;
       const projectname = req.body.projectName;
       const projectdesc = req.body.projectDescription;
+      const projecttype = req.body.type;
+      const projectstatus = projecttype === 'AI Model training' ? 'Image upload':'Image generation';
       const currentDate = new Date();
       console.log(username, projectname,  projectdesc, currentDate);
-      const query = 'INSERT INTO Projects (user_id, project_name, project_description, step, img_generation_remaining_count, CreateTime) VALUES (?, ?, ?, ?, ?, ?)';
+      const query = 'INSERT INTO Projects (user_id, project_name, project_description, status, img_generation_remaining_count, CreateTime, Type) VALUES (?, ?, ?, ?, ?, ?, ?)';
       const check = 'select * from Projects where project_name=? and user_id=?';
       rdsConnection.query(check, [projectname, username], (err, results) => {
         if (err) throw err;
@@ -153,7 +155,7 @@ router.post("/addproject", ensuretoken, async function(req, res) {
         }
         else
         {
-          rdsConnection.query(query, [username, projectname, projectdesc, '0', 4, currentDate], (err, results) => {
+          rdsConnection.query(query, [username, projectname, projectdesc, projectstatus, 4, currentDate, projecttype], (err, results) => {
             if (err) throw err;
             console.log(results.insertId)
             console.log("project insert success.")
@@ -295,16 +297,16 @@ router.post("/confirmstep", ensuretoken, async function(req, res) {
       res.sendStatus(403);
     } else {
       console.log(req.body);
-      const step = req.query.step;
-      const username = req.query.username;
-      const projectname = req.query.projectname;
-      console.log(projectname);
-
-      const updatestep = "update Projects set step = ? where user_id = ? and project_name = ?";
-      rdsConnection.query(updatestep, [step,username, projectname], (err, results) => {
+      const status = req.body.step;
+      const username = req.body.username;
+      const projectname = req.body.projectname;
+      console.log(status, username, projectname);
+      const currentDate = new Date();
+      const updatestatus = "update Projects set status = ?, LastUpdated = ? where user_id = ? and project_name = ?";
+      rdsConnection.query(updatestatus, [status, currentDate, username, projectname], (err, results) => {
         if (err) throw err;
-        console.log("update Project step to " + step + "success!");
-        res.status(200).send(step);
+        console.log("update Project status to " + status + "success!");
+        res.status(200).send("update Project status to " + status + "success!");
       });
 
     }
@@ -319,11 +321,11 @@ router.get("/getstep", ensuretoken, async function(req, res) {
       res.sendStatus(403);
     } else {
       console.log(req.body);
-      const username = req.query.username;
-      const projectname = req.query.projectname;
-      console.log(projectname);
+      const username = req.body.username;
+      const projectname = req.body.projectname;
+      console.log(username, projectname);
 
-      const getstep = "select step from  Projects where user_id = ? and project_name = ?";
+      const getstep = "select status from  Projects where user_id = ? and project_name = ?";
       rdsConnection.query(getstep, [username, projectname], (err, results) => {
         if (err) {
           console.error("Error executing SQL query:", err);
@@ -331,9 +333,9 @@ router.get("/getstep", ensuretoken, async function(req, res) {
         }
 
         if (results.length > 0) {
-          const step = results[0].step;
-          console.log("Step:", step);
-          return res.status(200).send(step);
+          const status = results[0].status;
+          console.log("status:", status);
+          return res.status(200).send(status);
         } else {
           return res.status(404).json({ error: "Project not found" });
         }
@@ -350,10 +352,10 @@ router.post("/modifyimgcount", ensuretoken, async function(req, res) {
       res.sendStatus(403);
     } else {
       console.log(req.body);
-      const count = req.query.count;
-      const username = req.query.username;
-      const projectname = req.query.projectname;
-      console.log(projectname);
+      const count = req.body.count;
+      const username = req.body.username;
+      const projectname = req.body.projectname;
+      console.log(count, username, projectname);
 
       const updatecount = "update Projects set img_generation_remaining_count = ? where user_id = ? and project_name = ?";
       rdsConnection.query(updatecount, [count,username, projectname], (err, results) => {
@@ -374,8 +376,8 @@ router.get("/getimgcount", ensuretoken, async function(req, res) {
       res.sendStatus(403);
     } else {
       console.log(req.body);
-      const username = req.query.username;
-      const projectname = req.query.projectname;
+      const username = req.body.username;
+      const projectname = req.body.projectname;
       console.log(projectname);
 
       const getcount = "select img_generation_remaining_count from  Projects where user_id = ? and project_name = ?";
@@ -391,6 +393,46 @@ router.get("/getimgcount", ensuretoken, async function(req, res) {
           return res.status(200).send(count);
         } else {
           return res.status(404).json({ error: "Project not found" });
+        }
+      });
+    }
+  })
+  
+});
+
+//list all project's info
+let allprojects = [];
+router.get("/getallproject", ensuretoken, async function(req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey , async function(err,data){
+    if(err){
+      res.sendStatus(403);
+    } else {
+      console.log(req.body);
+      const getsql = "select * from  Projects";
+      rdsConnection.query(getsql, [], (err, results) => {
+        if (err) {
+          console.error("Error executing SQL query:", err);
+          return res.status(500).json({ error: "Internal server error" });
+        }
+        allprojects = [];
+        if (results.length > 0) {
+          results.forEach(result => {
+            const project = {
+              id: result.id,
+              userid: result.userid,
+              project_name: result.project_name,
+              status: result.status,
+              project_description: result.project_description,
+              Type: result.Type,
+              CreateTime: result.CreateTime,
+              img_generation_remaining_count: result.img_generation_remaining_count
+            };
+            allprojects.push(project);
+          });
+          return res.status(200).send(allprojects);
+        } else {
+          return res.status(404).json({ error: "found no Project." });
         }
       });
     }

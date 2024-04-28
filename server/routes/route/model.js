@@ -1,16 +1,18 @@
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
-const axios = require('axios')
+const axios = require('axios');
+const multer = require("multer");
 const router = express.Router();
 const { pool, rdsConnection } = require("../../src/database.js");
-const { GetObjectCommand } = require('@aws-sdk/client-s3');
+const { GetObjectCommand,PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand} = require('@aws-sdk/client-s3');
 const { createWriteStream } = require('fs');
 const {s3Client} = require('../../awsconfig.js');
 const INSTANCE_IP = process.env.INSTANCE_IP;
 const ensuretoken = require('../../authtoken.js');
 const jwt = require('jsonwebtoken');
 const secretkey = process.env.SECRETKEY;
+const bucketName = process.env.AWS_BUCKET_NAME;
 router.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", `http://localhost:3000`);
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
@@ -109,6 +111,77 @@ router.post("/modifysdmodel", ensuretoken, async function(req, res) {
 
     }
   })
+});
+
+
+//upload model into specific project
+const upload = multer({ dest: 'uploads/' }); // 暫存上傳文件的目錄
+router.post("/uploadmodel", ensuretoken, upload.single('file'), async function(req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey , async function(err, data){
+    if(err){
+      res.sendStatus(403);
+    } else {
+      console.log(req.query);
+      const username = req.query.username;
+      const projectname = req.query.projectname;
+      const file = req.file;
+      if (!file) {
+        return res.status(400).send("No file uploaded.");
+      }
+      console.log(username, projectname, file.originalname);
+      const selectsql = "select * from Projects where project_name = ? and user_id = ?";
+      rdsConnection.query(selectsql, [projectname, username], (err, results) => {
+        if (err) {
+          console.error(err);
+          res.status(500).send("Database query error");
+          return;
+        }
+        if (results.length > 0) {
+          const status = results[0].status;
+          console.log(status);
+          if (status === 'Model training in process') {
+            const s3path = `uploads/${username}/${projectname}/model/${file.originalname}`;
+            const fileContent = fs.readFileSync(file.path);
+
+            const params = {
+              Bucket: bucketName,
+              Key: s3path,
+              Body: fileContent,
+              ContentType: file.mimetype
+            };
+
+            const command = new PutObjectCommand(params);
+
+            s3Client.send(command)
+              .then(() => {
+                console.log("File uploaded successfully to S3 at", s3path);
+                fs.unlinkSync(file.path); // 刪除伺服器上的臨時文件
+                const updatestatus = "update Projects set status = ?, LastUpdated = ? where user_id = ? and project_name = ?";
+                const currentDate = new Date();
+                rdsConnection.query(updatestatus, ['Model training completed', currentDate, username, projectname], (err, results) => {
+                  if (err) {
+                    console.error(err);
+                    res.status(500).send("Error updating project status");
+                    return;
+                  }
+                  console.log("Update project status to Model training completed success!");
+                  res.send('Upload model into project success.');
+                });
+              })
+              .catch(error => {
+                console.error("Error uploading file to S3:", error);
+                res.status(500).send("Error uploading file to S3");
+              });
+          } else {
+            res.status(403).send("Project is not in the correct state for model upload.");
+          }
+        } else {
+          res.status(404).send("Project not found");
+        }
+      });
+    }
+  });
 });
 
 
