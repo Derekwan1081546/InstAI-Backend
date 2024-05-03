@@ -97,16 +97,17 @@ router.post("/modifysdmodel", ensuretoken, async function(req, res) {
       const description = req.body.description;
       const modelname = req.body.modelname;
       const checkpoint = req.body.checkpoint;
+      const base64 = req.body.base64;
       console.log(description, modelname, checkpoint);
-      const updatesql = "update SDModels set description = ? , model_name = ? , LastUpdated = ?  where checkpoint = ? ";
+      const updatesql = "update SDModels set description = ? , model_name = ? , LastUpdated = ? , model_styleimg_base64 = ?  where checkpoint = ? ";
       const currentDate = new Date();
-      rdsConnection.query(updatesql, [description, modelname, currentDate, checkpoint], (err, results) => {
+      rdsConnection.query(updatesql, [description, modelname, currentDate, base64, checkpoint], (err, results) => {
         if (err) {
           console.error(err);
           res.status(500).send("error");
         }
-        console.log("update description success!");
-        res.status(200).send("update description success!");
+        console.log("update SDmodel information success!");
+        res.status(200).send("update SDmodel information success!");
       });
 
     }
@@ -154,20 +155,63 @@ router.post("/uploadmodel", ensuretoken, upload.single('file'), async function(r
             const command = new PutObjectCommand(params);
 
             s3Client.send(command)
-              .then(() => {
+              .then(async() => {
                 console.log("File uploaded successfully to S3 at", s3path);
                 fs.unlinkSync(file.path); // 刪除伺服器上的臨時文件
-                const updatestatus = "update Projects set status = ?, LastUpdated = ? where user_id = ? and project_name = ?";
-                const currentDate = new Date();
-                rdsConnection.query(updatestatus, ['Model training completed', currentDate, username, projectname], (err, results) => {
-                  if (err) {
-                    console.error(err);
-                    res.status(500).send("Error updating project status");
-                    return;
-                  }
-                  console.log("Update project status to Model training completed success!");
-                  res.send('Upload model into project success.');
-                });
+                try {
+                  const updatestatus = "update Projects set status = ?, LastUpdated = ? where user_id = ? and project_name = ?";
+                  const currentDate = new Date();
+                  
+                  const queryResult = await new Promise((resolve, reject) => {
+                    rdsConnection.query(updatestatus, ['Model training completed', currentDate, username, projectname], (err, results) => {
+                      if (err) {
+                        console.error(err);
+                        res.status(500).send("Error updating project status");
+                        reject(err);
+                        return;
+                      }
+                      console.log("Update project status to Model training completed success!");
+                      resolve(results);
+                    });
+                  });
+                } catch (err) {
+                  console.error("Error updating:", err);
+                }
+                try {
+                  const insert = 'INSERT INTO Models (project_id, model_path, model_name, version_number, createtime) VALUES (?, ?, ?, ?, ?)';
+                  const modelname = file.originalname;
+                  const versionnum = 1;
+                  console.log(username, projectname);
+                  //downloadFile();
+                  const modelpath = `uploads/${username}/${projectname}/${file.originalname}`; // 指定資料夾路徑
+                  const queryResult = await new Promise((resolve, reject) => {
+                    const check = 'select id from Projects where project_name = ?';
+                    rdsConnection.query(check, [projectname], async(err, results) => {
+                      if (err) {
+                        console.error(err);
+                        res.status(500).send("Error select error");
+
+                      }
+                      if(results.length>0){
+                        const project_id = results[0].id;
+                        const currentDate = new Date();
+                        rdsConnection.query(insert, [project_id, modelpath, modelname, versionnum, currentDate], (err, results) => {
+                          if (err) {
+                            console.error(err);
+                            res.status(500).send("Error insert into models table.");
+                            reject(err);
+                            return;
+                          }
+                          console.log("Inert into Models table completed success!");
+                          resolve(results);
+                        });
+                      }
+                    });
+                  });
+                } catch (err) {
+                  console.error("Error inserting:", err);
+                }
+                res.status(200).send("upload model success!");
               })
               .catch(error => {
                 console.error("Error uploading file to S3:", error);
@@ -184,52 +228,62 @@ router.post("/uploadmodel", ensuretoken, upload.single('file'), async function(r
   });
 });
 
-
-let arr = [];
-router.get("/getmodel", (req, res) => {
-  try {
-    arr = [];
-    console.log(req.body);
-    const username = req.query.username;
-    const user_path = path.join(__dirname, "../../uploads", username);
-    console.log(username, user_path);
-    if (fs.existsSync(user_path)) {
-      console.log("folder exists");
-      fs.readdirSync(user_path).forEach((folder) => {
-        console.log(folder);
-        arr.push(folder);
-      });
-      console.log(arr);
+//提供前端於Internal_user顯示該專案上傳模型的資訊
+router.get("/getmodel", ensuretoken, async function (req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey, async function(err, data) {
+    if (err) {
+      res.sendStatus(403);
     } else {
-      fs.mkdirSync(user_path);
+      const getsql = "select * from Models";
+      rdsConnection.query(getsql, [], async (err, results) => {
+        if (err) {
+          console.error("Error executing SQL query:", err);
+          return res.status(500).json({ error: "Internal server error" });
+        }
+        let allmodels = [];
+        if (results.length > 0) {
+          for (const result of results) {
+            const model = {
+              id: result.id,
+              project_id: result.project_id,
+              model_path: result.model_path,
+              model_name: result.model_name,
+              version_number: result.version_number,
+              createtime: result.createtime
+            };
+            allmodels.push(model);
+          }
+          return res.status(200).send(allmodels);
+        } else {
+          return res.status(404).json({ error: "No models found." });
+        }
+      });
     }
-    res.status(200).json(arr);
-  } catch (error) {
-    res.status(500).json(error.message);
-  }
+  });
 });
 const s3BucketName = process.env.AWS_BUCKET_NAME;
-async function downloadFile() {
-  const params = {
-    Bucket: s3BucketName,
-    Key: 'uploads/yolov3tiny.zip',
-  };
+// async function downloadFile() {
+//   const params = {
+//     Bucket: s3BucketName,
+//     Key: 'uploads/yolov3tiny.zip',
+//   };
 
-  try {
-    const { Body } = await s3Client.send(new GetObjectCommand(params));
+//   try {
+//     const { Body } = await s3Client.send(new GetObjectCommand(params));
 
-    // 使用Writable Stream將檔案內容寫入本地檔案
-    const writeStream = createWriteStream("D:/yolov3tiny.zip");
-    Body.pipe(writeStream);
+//     // 使用Writable Stream將檔案內容寫入本地檔案
+//     const writeStream = createWriteStream("D:/yolov3tiny.zip");
+//     Body.pipe(writeStream);
 
-    // 等待檔案寫入完成
-    await new Promise((resolve) => writeStream.on('close', resolve));
+//     // 等待檔案寫入完成
+//     await new Promise((resolve) => writeStream.on('close', resolve));
 
-    console.log('檔案下載成功');
-  } catch (error) {
-    console.error('下載檔案時發生錯誤:', error);
-  }
-}
+//     console.log('檔案下載成功');
+//   } catch (error) {
+//     console.error('下載檔案時發生錯誤:', error);
+//   }
+// }
 
 
 router.post("/downloadmodel", ensuretoken, async function(req, res) {

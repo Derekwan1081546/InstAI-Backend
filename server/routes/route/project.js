@@ -144,7 +144,7 @@ router.post("/addproject", ensuretoken, async function(req, res) {
       const projectstatus = projecttype === 'AI Model training' ? 'Image upload':'Image generation';
       const currentDate = new Date();
       console.log(username, projectname,  projectdesc, currentDate);
-      const query = 'INSERT INTO Projects (user_id, project_name, project_description, status, img_generation_remaining_count, CreateTime, Type) VALUES (?, ?, ?, ?, ?, ?, ?)';
+      const query = 'INSERT INTO Projects (user_id, project_name, project_description, status, img_generation_remaining_count, CreateTime, Type, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
       const check = 'select * from Projects where project_name=? and user_id=?';
       rdsConnection.query(check, [projectname, username], (err, results) => {
         if (err) throw err;
@@ -155,11 +155,19 @@ router.post("/addproject", ensuretoken, async function(req, res) {
         }
         else
         {
-          rdsConnection.query(query, [username, projectname, projectdesc, projectstatus, 4, currentDate, projecttype], (err, results) => {
+          const selectsql='select * from Users where id = ?'
+          rdsConnection.query(selectsql, [username], (err, results) => {
             if (err) throw err;
-            console.log(results.insertId)
-            console.log("project insert success.")
+            if (results.length > 0) {
+              const email = results[0].email;
+              rdsConnection.query(query, [username, projectname, projectdesc, projectstatus, 4, currentDate, projecttype, email], (err, results) => {
+                if (err) throw err;
+                console.log(results.insertId)
+                console.log("project insert success.")
+              });
+            }
           });
+          
           const folderName=`uploads/${username}/${projectname}/`;
 
           //先檢查專案是否存在
@@ -320,9 +328,8 @@ router.get("/getstep", ensuretoken, async function(req, res) {
     if(err){
       res.sendStatus(403);
     } else {
-      console.log(req.body);
-      const username = req.body.username;
-      const projectname = req.body.projectname;
+      const username = req.query.username;
+      const projectname = req.query.projectname;
       console.log(username, projectname);
 
       const getstep = "select status from  Projects where user_id = ? and project_name = ?";
@@ -417,31 +424,31 @@ router.get("/getallproject", ensuretoken, async function(req, res) {
         let allprojects = [];
         if (results.length > 0) {
           for (const result of results) {
-            const selectsql = "select email from Users where id = ?";
-            let user_email = '';
-            try {
-              const queryResult = await new Promise((resolve, reject) => {
-                rdsConnection.query(selectsql, [result.user_id], (err, results) => {
-                  if (err) {
-                    reject(err);
-                  } else {
-                    resolve(results);
-                  }
-                });
-              });
+            // const selectsql = "select email from Users where id = ?";
+            // let user_email = '';
+            // try {
+            //   const queryResult = await new Promise((resolve, reject) => {
+            //     rdsConnection.query(selectsql, [result.user_id], (err, results) => {
+            //       if (err) {
+            //         reject(err);
+            //       } else {
+            //         resolve(results);
+            //       }
+            //     });
+            //   });
               
-              if (queryResult.length > 0) {
-                user_email = queryResult[0].email;
-                // console.log('user email:', user_email);
-              }
-            } catch (err) {
-              console.error("Error querying user email:", err);
-            }
-            
+            //   if (queryResult.length > 0) {
+            //     user_email = queryResult[0].email;
+            //     // console.log('user email:', user_email);
+            //   }
+            // } catch (err) {
+            //   console.error("Error querying user email:", err);
+            // }
+
             const project = {
               id: result.id,
               userid: result.user_id,
-              email: user_email,
+              email: result.email,
               project_name: result.project_name,
               status: result.status,
               project_description: result.project_description,
