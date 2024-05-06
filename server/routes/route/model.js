@@ -36,7 +36,7 @@ router.get("/getsdmodel", ensuretoken , async(req, res) => {
                   const currentDate = new Date();
                   const checksql='select checkpoint from SDModels where checkpoint=?';
                   const sql = 'INSERT INTO SDModels (model_path, model_name, checkpoint, createtime, LastUpdated) VALUES (?, ?, ?, ?, ?)';
-                  const selectsql = 'select checkpoint,model_name, description from SDModels';
+                  const selectsql = 'select checkpoint,model_name, description, model_styleimg_base64 from SDModels';
                   let allResults = []; // Array to store all results
                   // Loop through each data item and insert it into the table
                   data.forEach(item => {
