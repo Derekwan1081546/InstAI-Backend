@@ -183,7 +183,7 @@ router.post("/uploadmodel", ensuretoken, upload.single('file'), async function(r
                   const versionnum = 1;
                   console.log(username, projectname);
                   //downloadFile();
-                  const modelpath = `uploads/${username}/${projectname}/${file.originalname}`; // 指定資料夾路徑
+                  const modelpath = `uploads/${username}/${projectname}/model/${file.originalname}`; // 指定資料夾路徑
                   const queryResult = await new Promise((resolve, reject) => {
                     const check = 'select id from Projects where project_name = ?';
                     rdsConnection.query(check, [projectname], async(err, results) => {
@@ -235,30 +235,56 @@ router.get("/getmodel", ensuretoken, async function (req, res) {
     if (err) {
       res.sendStatus(403);
     } else {
-      const getsql = "select * from Models";
-      rdsConnection.query(getsql, [], async (err, results) => {
+      console.log('Decoded JWT payload:', data);
+      const username = req.query.username;
+      const projectname = req.query.projectname;
+      let getsql = "select * from Models";
+      if(username != data.user){
+        res.status(500).send("not the same user!");
+        return;
+      }
+      if(data.role === "normal_user"){
+        getsql = "select * from Models where project_id = ?";
+      }else{
+        getsql = "select * from Models";
+      }
+      const selectsql = "select * from Projects where project_name = ? and user_id = ?";
+      rdsConnection.query(selectsql, [projectname, username], (err, results) => {
         if (err) {
-          console.error("Error executing SQL query:", err);
-          return res.status(500).json({ error: "Internal server error" });
+          console.error(err);
+          res.status(500).send("Database query error");
+          return;
         }
-        let allmodels = [];
         if (results.length > 0) {
-          for (const result of results) {
-            const model = {
-              id: result.id,
-              project_id: result.project_id,
-              model_path: result.model_path,
-              model_name: result.model_name,
-              version_number: result.version_number,
-              createtime: result.createtime
-            };
-            allmodels.push(model);
-          }
-          return res.status(200).send(allmodels);
-        } else {
-          return res.status(404).json({ error: "No models found." });
+          const project_id = results[0].id;
+          rdsConnection.query(getsql, [project_id], async (err, results) => {
+            if (err) {
+              console.error("Error executing SQL query:", err);
+              return res.status(500).json({ error: "Internal server error" });
+            }
+            let allmodels = [];
+            if (results.length > 0) {
+              for (const result of results) {
+                const model = {
+                  id: result.id,
+                  project_id: result.project_id,
+                  model_path: result.model_path,
+                  model_name: result.model_name,
+                  version_number: result.version_number,
+                  createtime: result.createtime
+                };
+                allmodels.push(model);
+              }
+              return res.status(200).send(allmodels);
+            } else {
+              return res.status(404).json({ error: "No models found." });
+            }
+          });
+        }else{
+          return res.status(404).json({ error: "No project found." });
         }
       });
+      
     }
   });
 });
@@ -292,59 +318,40 @@ router.post("/downloadmodel", ensuretoken, async function(req, res) {
     if(err){
       res.sendStatus(403);
     } else {
-      console.log(req.body);
-      const username = req.query.username;
-      const projectname = req.query.projectname;
-      const modelname = req.query.modelname;
-      const versionnum =1;
-      console.log(username, projectname);
+      const project_id = req.query.project_id;
+      console.log(project_id);
       //downloadFile();
-      const modelpath = `uploads/${username}/${projectname}/requirements.json`; // 指定資料夾路徑
-      const insert = 'INSERT INTO Models (project_id, model_path, model_name, version_number, createtime) VALUES (?, ?, ?, ?, ?)';
-      const check = 'select id from Projects where project_name=?';
-      rdsConnection.query(check, [projectname], async(err, data) => {
-          if (err) {
-              console.log(err);
-          }
-          if(data.length>0){
-              const project_id=data[0].id;
-              const currentDate = new Date();
-              console.log(currentDate);
-              rdsConnection.query(insert, [project_id, modelpath, modelname, versionnum, currentDate], async(err, results) => {
-                  if (err) throw err;
-                  console.log("insert Model success.");
-                  //return res.status(200).send("模型下載成功!");
-                  //const key = `uploads/${username}/${projectname}/yolov3tiny.zip`;
-                  const key = 'uploads/yolov3tiny.zip';
-                  const params = {
-                    Bucket: s3BucketName,
-                    Key: key,
-                  };
-                  
-                  try {
-                    const { Body } = await s3Client.send(new GetObjectCommand(params));
-                    const key= 'yolov3tiny.zip';
-                    // 設定HTTP標頭，告訴瀏覽器應該如何處理檔案
-                    res.setHeader('Content-Disposition', `attachment; filename=${key}`);
-                    res.setHeader('Content-Type', 'application/octet-stream');
-                
-                    // 將S3的檔案內容直接傳送到HTTP回應
-                    Body.pipe(res);
-                  } catch (error) {
-                    console.error('下載檔案時發生錯誤:', error);
-                
-                    // 如果出現錯誤，回傳錯誤訊息給前端
-                    res.status(500).json({ success: false, message: '下載檔案時發生錯誤' });
-                  }
-                
-              });
-          }
-          else
-          {
-              console.log("project not found.");
-              return res.status(404).json({ error: "Project not found" });
-          }
-      });
+      //const modelpath = `uploads/${username}/${projectname}/${modelname}`; // 指定資料夾路徑
+      const selectsql = 'select * from Models where project_id = ?';
+      rdsConnection.query(selectsql, [project_id], async(err, results) => {
+        if (err) throw err;
+        //return res.status(200).send("模型下載成功!");
+        //const key = `uploads/${username}/${projectname}/yolov3tiny.zip`;
+        const key = results[0].model_path;
+        console.log(key);
+        const params = {
+          Bucket: s3BucketName,
+          Key: key,
+        };
+        
+        try {
+          const { Body } = await s3Client.send(new GetObjectCommand(params));
+          const key= results[0].model_name;
+          console.log(key);
+          // 設定HTTP標頭，告訴瀏覽器應該如何處理檔案
+          res.setHeader('Content-Disposition', `attachment; filename=${key}`);
+          res.setHeader('Content-Type', 'application/octet-stream');
+          console.log('download success.')
+          // 將S3的檔案內容直接傳送到HTTP回應
+          Body.pipe(res);
+        } catch (error) {
+          console.error('下載檔案時發生錯誤:', error);
+      
+          // 如果出現錯誤，回傳錯誤訊息給前端
+          res.status(500).json({ success: false, message: '下載檔案時發生錯誤' });
+        }
+      
+    });
     }
   })
     
