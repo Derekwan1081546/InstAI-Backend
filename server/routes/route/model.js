@@ -239,51 +239,75 @@ router.get("/getmodel", ensuretoken, async function (req, res) {
       const username = req.query.username;
       const projectname = req.query.projectname;
       let getsql = "select * from Models";
-      if(username != data.user){
+      if(username != data.user && data.role === "normal_user"){
         res.status(500).send("not the same user!");
         return;
       }
       if(data.role === "normal_user"){
         getsql = "select * from Models where project_id = ?";
-      }else{
-        getsql = "select * from Models";
-      }
-      const selectsql = "select * from Projects where project_name = ? and user_id = ?";
-      rdsConnection.query(selectsql, [projectname, username], (err, results) => {
-        if (err) {
-          console.error(err);
-          res.status(500).send("Database query error");
-          return;
-        }
-        if (results.length > 0) {
-          const project_id = results[0].id;
-          rdsConnection.query(getsql, [project_id], async (err, results) => {
-            if (err) {
-              console.error("Error executing SQL query:", err);
-              return res.status(500).json({ error: "Internal server error" });
-            }
-            let allmodels = [];
-            if (results.length > 0) {
-              for (const result of results) {
-                const model = {
-                  id: result.id,
-                  project_id: result.project_id,
-                  model_path: result.model_path,
-                  model_name: result.model_name,
-                  version_number: result.version_number,
-                  createtime: result.createtime
-                };
-                allmodels.push(model);
+        const selectsql = "select * from Projects where project_name = ? and user_id = ?";
+        rdsConnection.query(selectsql, [projectname, username], (err, results) => {
+          if (err) {
+            console.error(err);
+            res.status(500).send("Database query error");
+            return;
+          }
+          if (results.length > 0) {
+            const project_id = results[0].id;
+            rdsConnection.query(getsql, [project_id], async (err, results) => {
+              if (err) {
+                console.error("Error executing SQL query:", err);
+                return res.status(500).json({ error: "Internal server error" });
               }
-              return res.status(200).send(allmodels);
-            } else {
-              return res.status(404).json({ error: "No models found." });
+              let allmodels = [];
+              if (results.length > 0) {
+                for (const result of results) {
+                  const model = {
+                    id: result.id,
+                    project_id: result.project_id,
+                    model_path: result.model_path,
+                    model_name: result.model_name,
+                    version_number: result.version_number,
+                    createtime: result.createtime
+                  };
+                  allmodels.push(model);
+                }
+                return res.status(200).send(allmodels);
+              } else {
+                return res.status(404).json({ error: "No models found." });
+              }
+            });
+          } else {
+            return res.status(404).json({ error: "No project found." });
+          }
+        });
+      } else {
+        getsql = "select * from Models";
+        rdsConnection.query(getsql, [], async (err, results) => {
+          if (err) {
+            console.error("Error executing SQL query:", err);
+            return res.status(500).json({ error: "Internal server error" });
+          }
+          let allmodels = [];
+          if (results.length > 0) {
+            for (const result of results) {
+              const model = {
+                id: result.id,
+                project_id: result.project_id,
+                model_path: result.model_path,
+                model_name: result.model_name,
+                version_number: result.version_number,
+                createtime: result.createtime
+              };
+              allmodels.push(model);
             }
-          });
-        }else{
-          return res.status(404).json({ error: "No project found." });
-        }
-      });
+            return res.status(200).send(allmodels);
+          } else {
+            return res.status(404).json({ error: "No models found." });
+          }
+        });
+      }
+      
       
     }
   });
