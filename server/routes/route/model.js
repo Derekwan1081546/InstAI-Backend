@@ -377,9 +377,61 @@ router.post("/downloadmodel", ensuretoken, async function(req, res) {
       
     });
     }
-  })
-    
+  })    
+});
+
+router.post("/deletemodel", ensuretoken, async function(req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey, async function(err, data) {
+    if (err) {
+      res.sendStatus(403);
+    } else {
+      try {
+        const project_id = req.query.project_id;
+        console.log(project_id);
+
+        // 從資料庫獲取模型路徑
+        const [results] = await rdsConnection.promise().query('SELECT * FROM Models WHERE project_id = ?', [project_id]);
+        if (results.length > 0) {
+          let folderName = results[0].model_path;
+          console.log(folderName);
+
+          // 刪除資料庫中的模型記錄
+          await rdsConnection.promise().query('DELETE FROM Models WHERE project_id = ?', [project_id]);
+
+          // 列舉並刪除 S3 上的檔案
+          const listParams = {
+            Bucket: s3BucketName,
+            Prefix: folderName, // 資料夾路徑
+          };
+          const listData = await s3Client.send(new ListObjectsV2Command(listParams));
+          const keysToDelete = listData.Contents.map(object => ({ Key: object.Key }));
+
+          if (keysToDelete.length > 0) {
+            const deleteParams = {
+              Bucket: s3BucketName,
+              Delete: {
+                Objects: keysToDelete,
+                Quiet: false
+              },
+            };
+            const deleteData = await s3Client.send(new DeleteObjectsCommand(deleteParams));
+            console.log("資料夾刪除成功:", deleteData);
+          } else {
+            console.log("無需刪除的物件。");
+          }
+          res.send("模型已刪除!");
+        } else {
+          console.log("Models not found.");
+          res.status(404).send("找不到模型");
+        }
+      } catch (error) {
+        console.error("Error in deleting model:", error);
+        res.status(500).send("刪除模型時發生錯誤");
+      }
+    }
   });
+});
 
 
 module.exports = { router };

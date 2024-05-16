@@ -29,6 +29,10 @@ const storage = multerS3({
     const folderPath = `uploads/${username}/${projectname}/`; // 指定資料夾路徑
     const fileName = `${folderPath}${file.originalname}`;
     cb(null, fileName);
+  },
+  contentDisposition: function (req, file, cb) {
+    const fileName = encodeURIComponent(file.originalname);
+    cb(null, `inline; filename="${fileName}"`);
   }
 });
 

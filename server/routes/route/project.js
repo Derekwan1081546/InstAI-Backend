@@ -46,7 +46,7 @@ router.use((req, res, next) => {
 //   }
 // }
 let arr = [];
-let desc = [];
+let allprojects = [];
 router.get("/getproject", ensuretoken, async function(req, res) {
   console.log(req.token);
   jwt.verify(req.token, secretkey , async function(err,data){
@@ -54,7 +54,7 @@ router.get("/getproject", ensuretoken, async function(req, res) {
       res.sendStatus(403);
     }else{
       arr = [];
-      desc = [];
+      allprojects = [];
       console.log(req.body);
       const username = req.query.username;
       const folderPath = `uploads/${username}/`;
@@ -89,7 +89,7 @@ router.get("/getproject", ensuretoken, async function(req, res) {
               // 使用 await 等待查詢的完成
               try {
                 const results = await new Promise((resolve, reject) => {
-                  const check = 'select project_description from Projects where project_name=? and user_id=?';
+                  const check = 'select * from Projects where project_name=? and user_id=?';
                   rdsConnection.query(check, [parts[parts.length - 2], username], (err, results) => {
                     if (err) {
                       console.error("Error executing SQL query:", err);
@@ -100,12 +100,24 @@ router.get("/getproject", ensuretoken, async function(req, res) {
                   });
                 });
 
+                // if (results.length > 0) {
+                //   const project_description = results[0].project_description;
+                //   console.log("description:", project_description);
+                //   desc.push(project_description);
+                // } else {
+                //   console.log("Folder does not exist");
+                // }
                 if (results.length > 0) {
-                  const project_description = results[0].project_description;
-                  console.log("description:", project_description);
-                  desc.push(project_description);
+                  const projects = {
+                    project_name: results[0].project_name,
+                    status: results[0].status,
+                    project_description: results[0].project_description,
+                    Type: results[0].Type,
+                    img_quantity: results[0].img_quantity
+                  };
+                  allprojects.push(projects);
                 } else {
-                  console.log("Folder does not exist");
+                  console.log("projects does not exist");
                 }
               } catch (err) {
                 console.error("Error executing SQL query:", err);
@@ -119,8 +131,9 @@ router.get("/getproject", ensuretoken, async function(req, res) {
         // console.log(arr);
         // res.status(200).json(arr);
         //console.log(desc);
-        console.log({arr,desc});
-        return res.status(200).json({projectname: arr,desc});
+        console.log(allprojects);
+        return res.status(200).send(allprojects);
+        //return res.status(200).json({projectname: arr,desc});
       } catch (err) {
         console.error("Error checking S3 folder:", err);
         res.status(500).json(err.message);
@@ -363,9 +376,10 @@ router.post("/modifyimgcount", ensuretoken, async function(req, res) {
       const username = req.body.username;
       const projectname = req.body.projectname;
       console.log(count, username, projectname);
+      const currentDate = new Date();
 
-      const updatecount = "update Projects set img_generation_remaining_count = ? where user_id = ? and project_name = ?";
-      rdsConnection.query(updatecount, [count,username, projectname], (err, results) => {
+      const updatecount = "update Projects set img_generation_remaining_count = ?, LastUpdated = ? where user_id = ? and project_name = ?";
+      rdsConnection.query(updatecount, [count, currentDate, username, projectname], (err, results) => {
         if (err) throw err;
         console.log("update Project img_generation_remaining_count to " + count + "success!");
         res.status(200).send(count);
@@ -382,9 +396,8 @@ router.get("/getimgcount", ensuretoken, async function(req, res) {
     if(err){
       res.sendStatus(403);
     } else {
-      console.log(req.body);
-      const username = req.body.username;
-      const projectname = req.body.projectname;
+      const username = req.query.username;
+      const projectname = req.query.projectname;
       console.log(projectname);
 
       const getcount = "select img_generation_remaining_count from  Projects where user_id = ? and project_name = ?";

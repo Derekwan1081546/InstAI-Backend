@@ -462,4 +462,29 @@ router.get("/getrequirement", ensuretoken, async function(req, res) {
 });
 
 
+router.post("/modifyimgquantity", ensuretoken, async function(req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey , async function(err,data){
+    if(err){
+      res.sendStatus(403);
+    } else {
+      console.log(req.body);
+      const quantity = req.body.quantity;
+      const username = req.body.username;
+      const projectname = req.body.projectname;
+      console.log(quantity, username, projectname);
+      const currentDate = new Date();
+      const updatecount = "update Projects set img_quantity = ?, LastUpdated = ? where user_id = ? and project_name = ?";
+      rdsConnection.query(updatecount, [quantity, currentDate, username, projectname], (err, results) => {
+        if (err) throw err;
+        console.log("update Project img_quantity to " + quantity + "success!");
+        res.status(200).send("update Project img_quantity to " + quantity + " success!");
+      });
+
+    }
+  })
+  
+});
+
+
 module.exports = { router };
