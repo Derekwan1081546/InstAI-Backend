@@ -410,7 +410,7 @@ router.get("/getimgcount", ensuretoken, async function(req, res) {
         if (results.length > 0) {
           const count = results[0].img_generation_remaining_count;
           console.log("img_generation_remaining_count:", count);
-          return res.status(200).send(count);
+          return res.status(200).json({ img_generation_remaining_count: count });
         } else {
           return res.status(404).json({ error: "Project not found" });
         }
