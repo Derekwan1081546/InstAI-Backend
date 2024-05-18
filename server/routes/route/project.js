@@ -365,29 +365,30 @@ router.get("/getstep", ensuretoken, async function(req, res) {
   
 });
 
+
 router.post("/modifyimgcount", ensuretoken, async function(req, res) {
   console.log(req.token);
-  jwt.verify(req.token, secretkey , async function(err,data){
-    if(err){
-      res.sendStatus(403);
+  jwt.verify(req.token, secretkey, async function(err, data) {
+    if (err) {
+      return res.sendStatus(403);
     } else {
       console.log(req.body);
       const count = req.body.count;
       const username = req.body.username;
       const projectname = req.body.projectname;
       console.log(count, username, projectname);
-      const currentDate = new Date();
 
-      const updatecount = "update Projects set img_generation_remaining_count = ?, LastUpdated = ? where user_id = ? and project_name = ?";
-      rdsConnection.query(updatecount, [count, currentDate, username, projectname], (err, results) => {
-        if (err) throw err;
-        console.log("update Project img_generation_remaining_count to " + count + "success!");
-        res.status(200).send(count);
+      const updatecount = "update Projects set img_generation_remaining_count = ? where user_id = ? and project_name = ?";
+      rdsConnection.query(updatecount, [count, username, projectname], (err, results) => {
+        if (err) {
+          console.error("Error executing SQL query:", err);
+          return res.status(500).json({ error: "Internal server error" });
+        }
+        console.log("update Project img_generation_remaining_count to " + count + " success!");
+        res.status(200).send({ count: count });
       });
-
     }
-  })
-  
+  });
 });
 
 router.get("/getimgcount", ensuretoken, async function(req, res) {
@@ -396,9 +397,10 @@ router.get("/getimgcount", ensuretoken, async function(req, res) {
     if(err){
       res.sendStatus(403);
     } else {
+      console.log(req.query);
       const username = req.query.username;
       const projectname = req.query.projectname;
-      console.log(projectname);
+      console.log(username, projectname);
 
       const getcount = "select img_generation_remaining_count from  Projects where user_id = ? and project_name = ?";
       rdsConnection.query(getcount, [username, projectname], (err, results) => {
