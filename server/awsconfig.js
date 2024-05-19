@@ -1,6 +1,7 @@
 const { S3Client } = require('@aws-sdk/client-s3');
 const multerS3 = require('multer-s3');
 const multer = require("multer");
+const iconv = require('iconv-lite');
 // AWS 設定
 const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
 const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
@@ -27,12 +28,12 @@ const storage = multerS3({
     const username = req.query.username;
     const projectname = req.query.projectname;
     const folderPath = `uploads/${username}/${projectname}/`; // 指定資料夾路徑
-    const fileName = `${folderPath}${file.originalname}`;
+    const fileName = `${folderPath}${Buffer.from(file.originalname,'binary').toString()}`; // 保留原始檔名
     cb(null, fileName);
   },
   contentDisposition: function (req, file, cb) {
     const fileName = encodeURIComponent(file.originalname);
-    cb(null, `inline; filename="${fileName}"`);
+    cb(null, `inline; filename*=UTF-8''${fileName}`);
   }
 });
 
