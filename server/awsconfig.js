@@ -27,7 +27,13 @@ const storage = multerS3({
   key: function (req, file, cb) {
     const username = req.query.username;
     const projectname = req.query.projectname;
-    const folderPath = `uploads/${username}/${projectname}/`; // 指定資料夾路徑
+    const folderPath = req.query.type === 'feedback' 
+    ? (file.originalname.includes('Inference') 
+        ? `uploads/${username}/${projectname}/feedback/Inference/` 
+        : `uploads/${username}/${projectname}/feedback/Origin/`
+      ) 
+    : `uploads/${username}/${projectname}/`;
+    //const folderPath = `uploads/${username}/${projectname}/`; // 指定資料夾路徑
     const fileName = `${folderPath}${Buffer.from(file.originalname,'binary').toString()}`; // 保留原始檔名
     cb(null, fileName);
   },

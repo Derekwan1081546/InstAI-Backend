@@ -164,16 +164,32 @@ router.post("/upload", ensuretoken, uploads.array("file"), async function(req, r
       //console.log(req.body);
       //console.log(req.files);
       const username = req.query.username;
-      //const filename =  req.files[0].originalname;
       const projectname = req.query.projectname;
-      const currentDate = new Date();
-      console.log(currentDate);
       console.log(username, projectname);
       //! insert image(buffer)
       const folderPath = `uploads/${username}/${projectname}/`; // 指定資料夾路徑
-      if(checkS3FolderExists(folderPath,username,projectname)){
-        res.json({ message: 'Image uploaded successfully!'});  
+      if (req.query.type === 'feedback' ) {
+        const OriginImgName =  req.files[0].originalname;
+        const InferenceImgName =  req.files[1].originalname;
+        const currentDate = new Date();
+        console.log(currentDate);
+        const OriginImgPath = `uploads/${username}/${projectname}/feedback/Origin/${OriginImgName}`;
+        const InferenceImgPath = `uploads/${username}/${projectname}/feedback/Inference/${InferenceImgName}`;
+        const insert = 'INSERT INTO FeedBackImages (OriginImgName, ProjectName, OriginImgPath, InferenceImgPath, Uploader, LastUpdated) VALUES (?, ?, ?, ?, ?, ?)';
+        rdsConnection.query(insert, [OriginImgName, projectname, OriginImgPath, InferenceImgPath, username, currentDate], (err, results) => {
+          if (err) {
+            console.error(err);
+            res.status(500).send("error");
+          }
+          console.log("update SDmodel information success!");
+          res.json({ message: 'feedbackImage uploaded successfully!'});  
+        });
+      } else {
+        if(checkS3FolderExists(folderPath,username,projectname)){
+          res.json({ message: 'Image uploaded successfully!'});  
+        }
       }
+      
     } 
   })
   
@@ -479,6 +495,31 @@ router.post("/modifyimgquantity", ensuretoken, async function(req, res) {
         if (err) throw err;
         console.log("update Project img_quantity to " + quantity + "success!");
         res.status(200).send("update Project img_quantity to " + quantity + " success!");
+      });
+
+    }
+  })
+  
+});
+
+
+router.post("/feedbackInfo", ensuretoken, async function(req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey , async function(err,data){
+    if(err){
+      res.sendStatus(403);
+    } else {
+      console.log(req.body);
+      const feedbackInfo = req.body.feedbackInfo;
+      const username = req.body.username;
+      const projectname = req.body.projectname;
+      console.log(feedbackInfo, username, projectname);
+      const currentDate = new Date();
+      const updatecount = "update FeedBackImages set feedbackInfo = ?, LastUpdated = ? where Uploader = ? and ProjectName = ?";
+      rdsConnection.query(updatecount, [feedbackInfo, currentDate, username, projectname], (err, results) => {
+        if (err) throw err;
+        console.log("update feedbackInfo success!");
+        res.status(200).send("update feedbackInfo success!");
       });
 
     }
