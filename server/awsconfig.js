@@ -34,7 +34,7 @@ const storage = multerS3({
       ) 
     : `uploads/${username}/${projectname}/`;
     //const folderPath = `uploads/${username}/${projectname}/`; // 指定資料夾路徑
-    const fileName = `${folderPath}${Buffer.from(file.originalname,'binary').toString()}`; // 保留原始檔名
+    const fileName = `${folderPath}${Buffer.from(file.originalname).toString('utf8')}`; // 保留原始檔名
     cb(null, fileName);
   },
   contentDisposition: function (req, file, cb) {

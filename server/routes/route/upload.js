@@ -169,8 +169,11 @@ router.post("/upload", ensuretoken, uploads.array("file"), async function(req, r
       //! insert image(buffer)
       const folderPath = `uploads/${username}/${projectname}/`; // 指定資料夾路徑
       if (req.query.type === 'feedback' ) {
-        const OriginImgName =  req.files[0].originalname;
-        const InferenceImgName =  req.files[1].originalname;
+        // const OriginImgName = `${Buffer.from(req.files[0].originalname,'binary').toString()}`;
+        const OriginImgName = Buffer.from(req.files[0].originalname).toString('utf8');
+        const InferenceImgName = Buffer.from(req.files[1].originalname).toString('utf8');
+        // const OriginImgName =  req.files[0].originalname;
+        // const InferenceImgName =  req.files[1].originalname;
         const currentDate = new Date();
         console.log(currentDate);
         const OriginImgPath = `uploads/${username}/${projectname}/feedback/Origin/${OriginImgName}`;
@@ -181,7 +184,6 @@ router.post("/upload", ensuretoken, uploads.array("file"), async function(req, r
             console.error(err);
             res.status(500).send("error");
           }
-          console.log("update SDmodel information success!");
           res.json({ message: 'feedbackImage uploaded successfully!'});  
         });
       } else {
@@ -513,10 +515,18 @@ router.post("/feedbackInfo", ensuretoken, async function(req, res) {
       const feedbackInfo = req.body.feedbackInfo;
       const username = req.body.username;
       const projectname = req.body.projectname;
-      console.log(feedbackInfo, username, projectname);
+      let OriginImgName = req.body.OriginImgName;
+      if (OriginImgName) {
+          OriginImgName = Buffer.from(OriginImgName).toString('utf8');
+      } else {
+          console.error('originalname is undefined');
+          res.status(400).send('Original name is required');
+      }
+
+      console.log(feedbackInfo, username, projectname, OriginImgName);
       const currentDate = new Date();
-      const updatecount = "update FeedBackImages set feedbackInfo = ?, LastUpdated = ? where Uploader = ? and ProjectName = ?";
-      rdsConnection.query(updatecount, [feedbackInfo, currentDate, username, projectname], (err, results) => {
+      const updatecount = "update FeedBackImages set feedbackInfo = ?, LastUpdated = ? where Uploader = ? and ProjectName = ? and OriginImgName = ?";
+      rdsConnection.query(updatecount, [feedbackInfo, currentDate, username, projectname, OriginImgName], (err, results) => {
         if (err) throw err;
         console.log("update feedbackInfo success!");
         res.status(200).send("update feedbackInfo success!");
