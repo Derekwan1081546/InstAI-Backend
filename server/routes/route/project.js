@@ -143,6 +143,48 @@ router.get("/getproject", ensuretoken, async function(req, res) {
 
 });
 
+
+router.get("/getsingleproject", ensuretoken, async function(req, res) {
+  console.log(req.token);
+  jwt.verify(req.token, secretkey , async function(err,data){
+    if(err){
+      res.sendStatus(403);
+    } else {
+      const username = req.query.username;
+      const projectname = req.query.projectname;
+      console.log(username, projectname);
+
+      const getproject = "select * from  Projects where user_id = ? and project_name = ?";
+      rdsConnection.query(getproject, [username, projectname], (err, results) => {
+        if (err) {
+          console.error("Error executing SQL query:", err);
+          return res.status(500).json({ error: "Internal server error" });
+        }
+
+        if (results.length > 0) {
+          const result = results[0];
+          const project = {
+            id: result.id,
+            userid: result.user_id,
+            email: result.email,
+            project_name: result.project_name,
+            status: result.status,
+            project_description: result.project_description,
+            Type: result.Type,
+            CreateTime: result.CreateTime,
+            img_generation_remaining_count: result.img_generation_remaining_count,
+            img_quantity: result.img_quantity
+          };
+          return res.status(200).send(project);
+        } else {
+          return res.status(404).json({ error: "No project found." });
+        }
+      });
+    }
+  })
+  
+});
+
 router.post("/addproject", ensuretoken, async function(req, res) {
   console.log(req.token);
   jwt.verify(req.token, secretkey , async function(err,data){
@@ -241,15 +283,15 @@ router.post("/deleteproject", ensuretoken, async function(req, res) {
       const projectname = req.body.projectName;
       console.log(projectname);
 
-      rdsConnection.query('select id from Projects where project_name=?', [projectname], (err, data) => {
+      rdsConnection.query('select id from Projects where project_name = ? and  user_id = ?', [projectname, username], (err, data) => {
         if (err) {
             console.log(err);
         }
         if(data.length>0)
         {
           const project_id=data[0].id;
-          const delreqsql = "delete from  Requirements where project_id = ?" ;
-          rdsConnection.query(delreqsql, [project_id], (err, data) => {
+          const delreqsql = "delete from  Requirements where project_id = ? and  uploader = ?" ;
+          rdsConnection.query(delreqsql, [project_id, username], (err, data) => {
             if (err) console.log("delete Requirements error.");
             else console.log("delete Requirements success.");
           });
@@ -260,14 +302,14 @@ router.post("/deleteproject", ensuretoken, async function(req, res) {
         }
       });
 
-      const delsql = "delete from  Images where project_id = ?" ;
-      rdsConnection.query(delsql, [projectname], (err, data) => {
+      const delsql = "delete from  Images where project_id = ? and  uploader = ?" ;
+      rdsConnection.query(delsql, [projectname, username], (err, data) => {
         if (err) console.log("delete Image error.");
         else console.log("delete image success.");
       });
 
-      const sql = "delete from  Projects where project_name = ?" ;
-      rdsConnection.query(sql, [projectname], (err, data) => {
+      const sql = "delete from  Projects where project_name = ? and  user_id = ?" ;
+      rdsConnection.query(sql, [projectname, username], (err, data) => {
         if (err) console.log("delete error.");
         else console.log("delete Project success.");
       });
